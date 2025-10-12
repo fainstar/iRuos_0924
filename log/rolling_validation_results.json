@@ -1,0 +1,41 @@
+{
+  "summary": {
+    "prediction_accuracy": 0.4637473079684135,
+    "action_accuracy": {
+      "buy": 0.5170940170940171,
+      "hold": 0.39751552795031053,
+      "sell": 0.5266903914590747
+    },
+    "avg_confidence": 0.9269287850494452,
+    "total_predictions": 1393,
+    "correct_predictions": "646",
+    "retrain_count": 284
+  },
+  "detailed_results": [
+    {
+      "prediction_accuracy": 0.4637473079684135,
+      "action_accuracy": {
+        "buy": 0.5170940170940171,
+        "hold": 0.39751552795031053,
+        "sell": 0.5266903914590747
+      },
+      "avg_confidence": 0.9269287850494452,
+      "total_predictions": 1393,
+      "correct_predictions": "646",
+      "retrain_count": 284,
+      "daily_results": "            date        open       close predicted_action prob_buy prob_hold prob_sell    weekday  is_wednesday actual_action  confidence  actual_return  retrain_count\n0     2020-01-02   53.849998   54.400002             sell    0.00%     1.71%    98.29%   Thursday         False          hold    0.982895      -0.018382              0\n1     2020-01-03   55.150002   54.200001             sell    0.00%     1.19%    98.81%     Friday         False          hold    0.988121      -0.009225              0\n2     2020-01-06   53.500000   53.150002             sell    0.00%     0.20%    99.80%     Monday         False          hold    0.998042       0.026340              0\n3     2020-01-07   53.299999   52.400002             sell   12.05%    13.46%    74.49%    Tuesday         False           buy    0.744857       0.052481              0\n4     2020-01-08   51.549999   51.900002             sell   18.34%     6.08%    75.58%  Wednesday          True           buy    0.755795       0.046243              1\n...          ...         ...         ...              ...      ...       ...       ...        ...           ...           ...         ...            ...            ...\n1388  2025-09-18  287.850006  290.750000             sell    0.00%     1.07%    98.93%   Thursday         False           buy    0.989255       0.032674            283\n1389  2025-09-19  292.500000  290.850006             sell    0.00%     0.11%    99.89%     Friday         False          hold    0.998881      -0.004126            283\n1390  2025-09-22  291.000000  294.899994             sell    0.00%     0.36%    99.64%     Monday         False          hold    0.996441      -0.017803            283\n1391  2025-09-23  298.899994  302.450012             sell    0.00%     1.64%    98.36%    Tuesday         False          hold    0.983566      -0.018681            283\n1392  2025-09-24  304.350006  302.799988             sell    0.00%     1.96%    98.04%  Wednesday          True          hold    0.980368      -0.015191            284\n\n[1393 rows x 13 columns]",
+      "train_start": "2015-11-17T00:00:00",
+      "train_end": "2019-12-31T00:00:00",
+      "validation_start": "2020-01-02T00:00:00",
+      "validation_end": "2025-10-01T00:00:00",
+      "train_size": 1009,
+      "validation_size": 1398
+    }
+  ],
+  "validation_config": {
+    "initial_train_size": 1009,
+    "retrain_frequency": "每週三",
+    "total_validation_days": 1398
+  },
+  "daily_results_csv": "log/rolling_validation_daily_details.csv"
+}

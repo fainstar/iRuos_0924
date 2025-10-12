@@ -18,8 +18,8 @@ import json
 import os
 
 # 設定中文字體
-plt.rcParams['font.family'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['font.family'] = ['Hiragino Sans GB', 'Heiti TC', 'Arial Unicode MS']
 
 class SignalBasedBacktest:
     def __init__(self, csv_file, initial_capital=1000000, commission_rate=0.001425):
@@ -261,11 +261,11 @@ class SignalBasedBacktest:
             print("沒有回測結果可以繪製")
             return
         
-        # 設定圖表樣式
-        plt.style.use('default')
-        plt.rcParams['font.family'] = ['Microsoft JhengHei', 'DejaVu Sans']
-        plt.rcParams['axes.unicode_minus'] = False
-        plt.rcParams['figure.facecolor'] = 'white'
+        # # 設定圖表樣式
+        # plt.style.use('default')
+        # plt.rcParams['font.family'] = ['Microsoft JhengHei', 'DejaVu Sans']
+        # plt.rcParams['axes.unicode_minus'] = False
+        # plt.rcParams['figure.facecolor'] = 'white'
         
         # 獲取所有年份
         self.results['年份'] = self.results['日期'].dt.year
@@ -418,7 +418,7 @@ class SignalBasedBacktest:
         plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
         print(f"📊 年度分析圖表已保存至：{filename}")
         
-        plt.show()
+        # plt.show()
     
     def save_results(self):
         """保存回測結果"""
