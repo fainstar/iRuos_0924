@@ -24,6 +24,10 @@
         "webhook_url": "https://discord.com/api/webhooks/1428285507527376986/ZUPXtgeoihbYgZ9nfZWEvXo2D5QD4M0S-E5rMYmznpIovmsDzwnpyNfR-uwZW2ZWEbB1"
     },
     {
+        "symbol": "00647L.TW",
+        "webhook_url": "https://discord.com/api/webhooks/1428294510831734866/hYBz67XxYhWyVMkKRgA_NXdqkDHI_X7lBne9sSxS_Wl9Gq331kCh2nLwn-kA8lmTtz6h"
+    },
+    {
         "symbol": "AAPL",
         "webhook_url": "https://discord.com/api/webhooks/1428286552533897319/VlYZXo6mtsClVd8kpAETi6HZAVMEKDABJuIA4yeIIKReUX-ZXu1yCdPsckoaCu8lvnJC"
     },
