@@ -88,7 +88,7 @@ embed = {
     "description": f"**建議動作：{action_display} {action_emoji}  •  信心度：{confidence_pct}**",
     "color": color,
     "fields": [
-        {"name": "📅 Signal 時間", "value": signal_time, "inline": True},
+        {"name": "📅 訊號時間", "value": signal_time, "inline": True},
         {"name": "🔁 對應日期", "value": for_date, "inline": True},
         {"name": "💰 當前價格", "value": f"{data.get('current_price', 0):.2f}", "inline": True},
         {"name": "📝 建議動作", "value": f"{action_display} {action_emoji}", "inline": True},
