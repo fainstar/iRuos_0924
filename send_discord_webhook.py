@@ -3,17 +3,24 @@ import os
 import json
 import sys
 import requests
+import argparse
 from datetime import datetime
 
-# 讀取 webhook（優先環境變數，否則第一個參數，再否則使用檔案內定義）
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL") or (sys.argv[1] if len(sys.argv) > 1 else "https://discord.com/api/webhooks/1426931603870978181/TQPCP9zPF8AbCEZokiZ-rrfpaeprmWWs6X0mvVtvuntCdIaFCmFpEgZ0vokelDjcEPfz")
+# 讀取 webhook（只從 --webhook 參數取得）
+parser = argparse.ArgumentParser(description="Send tomorrow trading signal to Discord webhook")
+parser.add_argument('--webhook', '-w', required=True, help='Discord webhook URL (required)')
+parser.add_argument('--json-path', '-j', help='Path to JSON file (overrides default log/tomorrow_trading_signal.json)')
+parser.add_argument('--dry-run', action='store_true', help='Do not POST, just print payload')
+args = parser.parse_args()
+
+WEBHOOK_URL = args.webhook
 
 # 預設 JSON 路徑（改為相對於此腳本的 log 資料夾，避免絕對路徑問題）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-JSON_PATH = os.path.join(BASE_DIR, "log", "tomorrow_trading_signal.json")
+JSON_PATH = args.json_path or os.path.join(BASE_DIR, "log", "tomorrow_trading_signal.json")
 
 if not os.path.isfile(JSON_PATH):
-    print(f"找不到 JSON 檔案: {JSON_PATH}\n請確認檔案存在或傳入正確路徑（環境變數: DISCORD_WEBHOOK_URL 或第一個參數為 webhook URL）", file=sys.stderr)
+    print(f"找不到 JSON 檔案: {JSON_PATH}\n請確認檔案存在或傳入正確路徑（可用 --json-path 參數）", file=sys.stderr)
     sys.exit(2)
 
 try:
@@ -82,7 +89,7 @@ embed = {
     "color": color,
     "fields": [
         {"name": "📅 Signal 時間", "value": signal_time, "inline": True},
-        {"name": "🔁 對應日期 (for_date)", "value": for_date, "inline": True},
+        {"name": "🔁 對應日期", "value": for_date, "inline": True},
         {"name": "💰 當前價格", "value": f"{data.get('current_price', 0):.2f}", "inline": True},
         {"name": "📝 建議動作", "value": f"{action_display} {action_emoji}", "inline": True},
         {"name": "🔎 信心度", "value": confidence_pct, "inline": True},

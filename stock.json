@@ -1,0 +1,12 @@
+[{
+    "symbol": "BTC-USD",
+    "webhook_url": "https://discord.com/api/webhooks/1428282427029061783/VHZY8ONHAkSAsZRF1S1uy_llucpHtcXSPrKLvpGnSgmS8wxEEnGPUXx3aHsycFLU5AbK"
+},
+{
+    "symbol": "ETH-USD",
+    "webhook_url": "https://discord.com/api/webhooks/1428282580138197102/ut_2IRiLLZ7u4QtbY6Fm1iwca9zz-LCZSsaBViITUoOeDAjx5KSbg3DECXNTPT6BSYWT"
+},
+{
+    "symbol": "0050.TW",
+    "webhook_url": "https://discord.com/api/webhooks/1428282696450310144/b2wvdCC4SU5QsY_bCsdXKEic57HKLQaLp3GuSg6sjfAatiNMzXaBkdeaTtdrl_OHaDlv"
+}]
