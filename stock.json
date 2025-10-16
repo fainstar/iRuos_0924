@@ -1,12 +1,39 @@
-[{
-    "symbol": "BTC-USD",
-    "webhook_url": "https://discord.com/api/webhooks/1428282427029061783/VHZY8ONHAkSAsZRF1S1uy_llucpHtcXSPrKLvpGnSgmS8wxEEnGPUXx3aHsycFLU5AbK"
-},
-{
-    "symbol": "ETH-USD",
-    "webhook_url": "https://discord.com/api/webhooks/1428282580138197102/ut_2IRiLLZ7u4QtbY6Fm1iwca9zz-LCZSsaBViITUoOeDAjx5KSbg3DECXNTPT6BSYWT"
-},
-{
-    "symbol": "0050.TW",
-    "webhook_url": "https://discord.com/api/webhooks/1428282696450310144/b2wvdCC4SU5QsY_bCsdXKEic57HKLQaLp3GuSg6sjfAatiNMzXaBkdeaTtdrl_OHaDlv"
-}]
+[
+    {
+        "symbol": "BTC-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1428282427029061783/VHZY8ONHAkSAsZRF1S1uy_llucpHtcXSPrKLvpGnSgmS8wxEEnGPUXx3aHsycFLU5AbK"
+    },
+    {
+        "symbol": "ETH-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1428282580138197102/ut_2IRiLLZ7u4QtbY6Fm1iwca9zz-LCZSsaBViITUoOeDAjx5KSbg3DECXNTPT6BSYWT"
+    },
+    {
+        "symbol": "SOL-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1428285915679293460/m9UOO90zLIKWqQlU5LTkNdgZwBgcQ1R3iUlmZrlTh22xxr126DsohEPwJ4JTDMWP59uL"
+    }, 
+    {
+        "symbol": "0050.TW",
+        "webhook_url": "https://discord.com/api/webhooks/1428282696450310144/b2wvdCC4SU5QsY_bCsdXKEic57HKLQaLp3GuSg6sjfAatiNMzXaBkdeaTtdrl_OHaDlv"
+    },
+    {
+        "symbol": "00631L.TW",
+        "webhook_url": "https://discord.com/api/webhooks/1427288946542514178/TISqqbNXiPgdI34975KpHOptk9k4vz67bof9ug1MLin0q-RI7Ym3vhb0SbUdDmmgqHha"
+    },
+    {
+        "symbol": "00635U.TW",
+        "webhook_url": "https://discord.com/api/webhooks/1428285507527376986/ZUPXtgeoihbYgZ9nfZWEvXo2D5QD4M0S-E5rMYmznpIovmsDzwnpyNfR-uwZW2ZWEbB1"
+    },
+    {
+        "symbol": "AAPL",
+        "webhook_url": "https://discord.com/api/webhooks/1428286552533897319/VlYZXo6mtsClVd8kpAETi6HZAVMEKDABJuIA4yeIIKReUX-ZXu1yCdPsckoaCu8lvnJC"
+    },
+    {
+        "symbol": "GOOGL",
+        "webhook_url": "https://discord.com/api/webhooks/1428286794826518578/OXpjZYH1Uq1MK22iNacw-1Ra35b3ECP60my-RRcuiMi07D6_RoTL9rKCYvE7zn9w8PQy"
+    },
+    {
+        "symbol": "SPY",
+        "webhook_url": "https://discord.com/api/webhooks/1428287390824267856/nkq9eV0trNy2fnjyqlnc1wSnw6yMst23NkzaO62VyxRMNUJW8Awl5sV2p59qJqxfgnpO"
+    }
+
+]
