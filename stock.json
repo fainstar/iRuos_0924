@@ -10,6 +10,18 @@
     {
         "symbol": "SOL-USD",
         "webhook_url": "https://discord.com/api/webhooks/1428285915679293460/m9UOO90zLIKWqQlU5LTkNdgZwBgcQ1R3iUlmZrlTh22xxr126DsohEPwJ4JTDMWP59uL"
+    },
+    {
+        "symbol": "XRP-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1436702043577253979/8YAi_5skmr5qAF6oGU8iRKft_GfJAr5FtaeaaL5WDPhlCOcFAJ76xUG6Zm1IEUXpntIG"
+    },
+    {
+        "symbol": "ADA-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1436702261349974018/1NHK3dMrdOtvFHuNURf1ipLH1IjnKU0a2vK9v-LshfIYGapdSpI2Qo-Y6z4vHpZKkR63"
+    },
+    {
+        "symbol": "LTC-USD",
+        "webhook_url": "https://discord.com/api/webhooks/1444024857930109041/0_buTPkzReYNgOKfLw2hAwzkE3XoAMRALgK07metBa_CGg-eI61lw3BluQx9FlF0bLt1"
     }, 
     {
         "symbol": "0050.TW",
@@ -42,5 +54,25 @@
     {
         "symbol": "AMD",
         "webhook_url": "https://discord.com/api/webhooks/1436702531546775603/pFq86NOUg-AxUH1vyBM9G1GFjhzRfQj8TiCK9SM3UJ7JqZIhE-kB_c_q8T1zVLYxD6PI"
+    },
+    {
+        "symbol": "INTC",
+        "webhook_url": "https://discord.com/api/webhooks/1436702715676852344/WAb9_YvHZAXgCW_Xm_1128aLce06IfPjyuF7huiQKZHI9X1mY06LvQy1SyOZwEV6vQ-V"
+    },
+    {
+        "symbol": "NVDA",
+        "webhook_url": "https://discord.com/api/webhooks/1436702868538261596/vdRdgRy1Gb2I7pEUiPXtp5NhzOWlT8z2waRT6jmmvAio3W8fUqhZgvMKuQ_qAlH5K9RV"
+    },
+    {
+        "symbol": "MSFT",
+        "webhook_url": "https://discord.com/api/webhooks/1436703007202082928/4KF6BQdW_sXWDMIBBPIbHIuFgyvsbGqbpagjJV-RN9rVKQa8gKnIcjsARq25gwsCn50t"
+    },
+    {
+        "symbol": "TSLA",
+        "webhook_url": "https://discord.com/api/webhooks/1436703124675891302/G2lrw_wprP9mwttq36eLQP3WzvdeCOacMnNDJZkeOhrt1pJmBCxjWHEIig2TvR2qi-9B"
+    },
+    {
+        "symbol": "META",
+        "webhook_url": "https://discord.com/api/webhooks/1436703415781822574/emcTdUrev79Ew7jIhLBlrkBvfM1h7-pL3WPG4mFs2vkB0nBOcqC4QW75mfAclDxLQeuU"
     }
 ]
