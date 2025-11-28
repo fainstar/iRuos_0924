@@ -186,7 +186,7 @@ class TradingPipeline:
             raise ValueError("整理後資料不足以產生訊號")
 
         final_train_size = max(int(len(df) * 0.8), self.config.lookback_days + 1)
-        classifier.train(df.iloc[:final_train_size])
+        classifier.train_until(final_train_size)
         classifier.save_model(str(self.paths.model))
         self.logger.info("最新模型已保存至 %s", self.paths.model)
 

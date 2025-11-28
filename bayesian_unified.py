@@ -41,6 +41,11 @@ class BayesianStateClassifier:
         # 分類標籤
         self.class_labels = {'buy': 0, 'hold': 1, 'sell': 2}
         self.inverse_labels = {0: 'buy', 1: 'hold', 2: 'sell'}
+
+        # 預先編碼資料快取
+        self._precomputed_X: np.ndarray | None = None
+        self._precomputed_y: np.ndarray | None = None
+        self._precomputed_indices: np.ndarray | None = None
         
     def _setup_logger(self) -> logging.Logger:
         """設定日誌配置。"""
@@ -103,6 +108,33 @@ class BayesianStateClassifier:
                 
         
         return X_encoded.values
+
+    def _precompute_full_dataset(self, data: pd.DataFrame) -> None:
+        """對完整資料集進行一次性編碼供後續重複使用"""
+        X, y, indices = self.prepare_data(data)
+        X_encoded = self._encode_features(X, fit=True)
+        self._precomputed_X = X_encoded
+        self._precomputed_y = y
+        self._precomputed_indices = np.array(indices)
+
+    def _ensure_precomputed(self) -> None:
+        if self._precomputed_X is None or self._precomputed_y is None or self._precomputed_indices is None:
+            raise ValueError("尚未建立預先編碼資料，無法重用快取")
+
+    def _build_training_mask(self, end_row: int) -> np.ndarray:
+        """根據資料列數建立訓練子集遮罩"""
+        self._ensure_precomputed()
+        limit = end_row - self.lookback_days
+        if limit <= 0:
+            return np.zeros_like(self._precomputed_indices, dtype=bool)
+        return self._precomputed_indices < limit
+
+    def train_until(self, end_row: int) -> dict:
+        """使用預編碼資料訓練至指定列數"""
+        mask = self._build_training_mask(end_row)
+        if mask.sum() == 0:
+            raise ValueError("訓練資料不足，無法進行模型訓練")
+        return self.train(None, mask=mask, reuse_encoded=True)
     
     def prepare_data(self, data: pd.DataFrame) -> tuple:
         """準備訓練數據"""
@@ -139,19 +171,37 @@ class BayesianStateClassifier:
         
         return X, y, valid_indices
     
-    def train(self, data: pd.DataFrame):
+    def train(
+        self,
+        data: pd.DataFrame | None = None,
+        *,
+        mask: np.ndarray | None = None,
+        reuse_encoded: bool = False,
+    ):
         """訓練貝葉斯分類器"""
         self.logger.info("=" * 50)
         self.logger.info("🚀 開始訓練貝葉斯分類器...")
         self.logger.info("=" * 50)
         
-        # 準備數據
-        self.logger.info("📊 準備訓練數據...")
-        X, y, _ = self.prepare_data(data)
-        
-        # 編碼特徵
-        self.logger.info("🔧 編碼特徵數據...")
-        X_encoded = self._encode_features(X, fit=True)
+        if reuse_encoded:
+            if mask is None:
+                raise ValueError("缺少訓練遮罩，無法重用預編碼資料")
+            self._ensure_precomputed()
+            X_encoded = self._precomputed_X[mask]
+            y = self._precomputed_y[mask]
+        else:
+            if data is None:
+                raise ValueError("未提供訓練資料")
+            # 準備數據
+            self.logger.info("📊 準備訓練數據...")
+            X, y, _ = self.prepare_data(data)
+            
+            # 編碼特徵
+            self.logger.info("🔧 編碼特徵數據...")
+            X_encoded = self._encode_features(X, fit=True)
+
+        if len(y) == 0:
+            raise ValueError("訓練資料不足，無法訓練模型")
         
         # 分割數據
         self.logger.info("✂️ 分割訓練和測試數據...")
@@ -361,9 +411,13 @@ class BayesianStateClassifier:
         self.logger.info(f"📅 驗證期間: {validation_data['Date'].min()} - {validation_data['Date'].max()}")
         self.logger.info(f"📊 訓練樣本數: {len(train_data)}, 驗證樣本數: {len(validation_data)}")
         
+        # 建立預先編碼資料
+        self.logger.info("🧮 建立預編碼特徵快取...")
+        self._precompute_full_dataset(data)
+        
         # 初始訓練模型
         self.logger.info("🚀 初始訓練模型...")
-        model_perf = self.train(train_data)
+        model_perf = self.train_until(initial_train_size)
         
         # 進行連續滾動驗證，每週三重新訓練
         print(f"開始連續滾動驗證，共 {len(validation_data)} 天...")
@@ -485,11 +539,10 @@ class BayesianStateClassifier:
                     retrain_count += 1
                     # 使用到當前時間點的所有數據重新訓練
                     retrain_end = train_end_position + i
-                    retrain_data = full_data[:retrain_end]
                     day_pbar.set_description(f"週三重訓: {current_date.strftime('%Y-%m-%d')}")
                     self.logger.info(f"🔄 週三重新訓練 (第 {retrain_count} 次): {current_date.strftime('%Y-%m-%d')}, 數據範圍: 第1-{retrain_end}行")
                     try:
-                        self.train(retrain_data)
+                        self.train_until(retrain_end)
                         self.logger.info(f"✅ 第 {retrain_count} 次重訓完成")
                     except Exception as e:
                         self.logger.error(f"❌ 重新訓練失敗: {e}")
@@ -685,8 +738,7 @@ def run_rolling_validation():
     # 用最新數據重新訓練最終模型
     print(f"\n=== 訓練最終模型 ===")
     final_train_size = int(len(data) * 0.8)
-    final_train_data = data[:final_train_size]
-    evaluation_results = classifier.train(final_train_data)
+    evaluation_results = classifier.train_until(final_train_size)
     
     # 保存最終模型
     classifier.save_model('log/bayesian_classifier_model.pkl')

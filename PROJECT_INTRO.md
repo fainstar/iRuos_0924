@@ -9,6 +9,7 @@
 - **SQLite 增量抓取**：`fetch.py` 搭配 `database.py`，只更新最新行情，避免重複下載，確保資料完整性。
 - **技術指標與分箱標準化**：`features.py` 計算多種技術指標，`rolling.py` 以 12 週窗口、4 分箱離散化特徵，使模型能處理分類資料。
 - **貝葉斯滾動驗證**：`bayesian_unified.py` 針對每日資料進行連續驗證，每逢週三重訓，並輸出詳細的每日預測結果與摘要。
+	最新版本採用預編碼快取：首次訓練後儲存已 LabelEncoder 處理的特徵矩陣，後續週三重訓與最終訓練僅需切片同一份 `numpy` 陣列，大幅縮短迭代時間且不影響結果。
 - **策略回測與視覺化**：`backtest_signal_based.py` 依訊號進行交易模擬，輸出統計檔、交易紀錄與年度走勢圖，並在圖表與檔名中標註標的資訊。
 - **自動通知與後端回報**：`TradingPipeline` 會推送 Discord webhook，並將最新行情與預測結果同步提交至 Google Form，便於後續資訊整合。
 
@@ -18,7 +19,7 @@
 2. **特徵工程**：`features.py` 對原始資料加入 RSI、MACD、布林通道等技術指標，輸出 `data/feature.csv`。
 3. **滾動窗口分箱**：`rolling.py` 利用 `RollingWindowBinner` 將特徵按週期分箱，形成 `data/rolling_window_12weeks_4bins.csv`。
 4. **資料整理**：`pretidy.py` 保留必要欄位與分箱結果，去除缺失值，輸出 `data/final_data.csv`。
-5. **模型訓練與驗證**：`bayesian_unified.py` 執行滾動驗證與最終模型訓練，產出每日預測與明日訊號檔案於 `log/` 目錄。
+5. **模型訓練與驗證**：`bayesian_unified.py` 執行滾動驗證與最終模型訓練。過程中會先建立完整資料的預編碼快取，再於每次週期性重訓直接切片重用，產出每日預測與明日訊號於 `log/` 目錄。
 6. **策略回測**：`backtest_signal_based.py` 讀取驗證結果 CSV，模擬以隔天開盤價交易，生成統計 JSON、每日資金變化 CSV、交易紀錄與年度圖表。
 7. **通知與後端提交**：若設定 Webhook，`send_discord_webhook.py` 會推送嵌入訊息；同時 `TradingPipeline` 會將最新行情與預測機率上傳至 Google Form。
 
