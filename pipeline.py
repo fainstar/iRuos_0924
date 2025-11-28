@@ -18,6 +18,10 @@ from rolling import RollingWindowBinner
 from send_discord_webhook import build_embed, post_webhook
 
 
+class NoNewDataError(RuntimeError):
+    """Raised when no new market data is available for processing."""
+
+
 FORM_SUBMIT_URL = (
     "https://docs.google.com/forms/d/e/1FAIpQLScqVfPDwwqP4QsM0SVNBLZSt1-8PXDl03EyQSfx9PmRxvvgMg/formResponse"
 )
@@ -113,6 +117,10 @@ class TradingPipeline:
         data = fetch_stock_data(self.config.symbol, years=self.config.years)
         if data is None or data.empty:
             raise ValueError(f"無法取得 {self.config.symbol} 的行情資料")
+        has_new_rows = bool(getattr(data, "attrs", {}).get("has_new_rows", True))
+        if not has_new_rows:
+            self.logger.info("未偵測到新的交易資料，流程將跳過後續步驟")
+            raise NoNewDataError(f"No new data for {self.config.symbol}")
         self.raw_data = data.copy()
         if 'Date' in self.raw_data.columns:
             self.raw_data['Date'] = pd.to_datetime(self.raw_data['Date'])
@@ -315,7 +323,15 @@ class TradingPipeline:
     def run(self) -> Dict[str, Any]:
         """執行整體流程並回傳各階段輸出"""
         self.logger.info("=== 開始執行 %s 流水線 ===", self.config.symbol)
-        self.fetch_data()
+        try:
+            self.fetch_data()
+        except NoNewDataError:
+            self.logger.info("今日尚無新資料，已跳過 %s 流水線", self.config.symbol)
+            return {
+                "skipped": True,
+                "reason": "no_new_data",
+                "symbol": self.config.symbol,
+            }
         self.generate_features()
         self.build_rolling_windows()
         self.pretidy_data()

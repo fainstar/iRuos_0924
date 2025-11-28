@@ -339,6 +339,7 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
     # 1. Check DB for latest date
     latest_date_str = database.get_latest_date(ticker_symbol)
     new_data = None
+    has_new_rows = False
 
     if latest_date_str:
         print(f"Found existing data for {ticker_symbol} up to {latest_date_str}")
@@ -366,6 +367,7 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
                 if new_data is not None and not new_data.empty:
                     try:
                         new_data = _normalize_history_df(new_data, ticker_symbol)
+                        has_new_rows = True
                     except Exception as e:
                         print(f"Error normalizing incremental data: {e}")
                         new_data = None
@@ -390,6 +392,8 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
         if new_data is None:
             reason = error_message or "未知原因"
             print(f"Error fetching {ticker_symbol}: {reason}")
+        else:
+            has_new_rows = True
 
     # 2. Save new data to DB
     if new_data is not None and not new_data.empty:
@@ -397,6 +401,10 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
 
     # 3. Load full data from DB
     full_data = database.load_market_data(ticker_symbol)
+    if not full_data.empty:
+        # 若資料庫先前為空但成功抓取，新資料旗標也應為 True
+        has_new_rows = has_new_rows or (latest_date_str is None and len(full_data) > 0)
+        full_data.attrs["has_new_rows"] = has_new_rows
 
     if not full_data.empty:
         try:

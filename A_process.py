@@ -92,7 +92,10 @@ def run_pipeline_for(entry: dict):
     try:
         pipeline = TradingPipeline(config)
         result = pipeline.run()
-        print(f"Pipeline for {symbol} completed successfully!")
+        if isinstance(result, dict) and result.get("skipped"):
+            print(f"No new data for {symbol}. Pipeline skipped.")
+        else:
+            print(f"Pipeline for {symbol} completed successfully!")
         return result
     except Exception as exc:  # pylint: disable=broad-except
         print(f"An error occurred while running the pipeline for {symbol}: {exc}")

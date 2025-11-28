@@ -2,6 +2,7 @@
 
 - `A_process.py` 作為入口，讀取 `stock.json` 逐一執行 `TradingPipeline`，首輪完成後以 `schedule` 安排每日 15:00 重新執行。
 - `pipeline.TradingPipeline` 負責整合資料抓取、特徵工程、滾動分箱、資料整理、貝氏分類、回測、Discord 通知與 Google 表單回填，並統一管理輸出至 `data/` 與 `log/`。
+	- 若 `fetch_stock_data` 回報無新交易資料，會透過 `NoNewDataError` 自動略過後續階段並回傳 `{"skipped": True}` 供調度流程判斷。
 - `fetch.py` 搭配 `database.py` 實作多來源的 Yahoo Finance 擷取策略，透過 SQLite (`data/market_data.db`) 做增量更新與快取。
 - `features.py`、`rolling.py`、`pretidy.py` 分別產生技術指標、切出週期滾動視窗並分箱，以及選取欄位加上缺值清理，輸出建模用 `final_data.csv`。
 - `bayesian_unified.py` 使用 CategoricalNB 搭配 LabelEncoder 進行週三重訓的 walk-forward 驗證，輸出每日預測 CSV、儲存模型與明日訊號。
@@ -26,7 +27,7 @@
 2. **模組化重構**：拆分大型模組為子套件（例如 `models/`、`backtest/`、`notifications/`），萃取共用工具以提升重用性與測試性。
 3. **測試與 CI**：為特徵計算、滾動分箱、模型資料前處理等撰寫單元測試，並在 GitHub Actions 上建立自動化流程。
 4. **依賴與部署文件**：補齊 `requirements.txt` 或 `pyproject.toml`，於 README 說明安裝與執行步驟，推薦使用虛擬環境或 Docker。
-5. **監控與告警**：排程或任一階段失敗時發送警示（Discord/Email）；關鍵步驟增加重試與異常處理。
+5. **監控與告警**：排程或任一階段失敗時發送警示（Discord/Email）；關鍵步驟增加重試與異常處理，並可利用 `skipped` 標記追蹤「今日無新資料」案例。
 6. **策略彈性**：將回測閾值、佣金、模型 retrain 頻率等抽為設定項，並考慮支援多模型或策略比較。
 7. **資料治理**：為 `data/`、`log/` 制定保留策略（壓縮、定期清理），寫檔時採臨時檔再 rename 以避免半成品。
 8. **報表化輸出**：將結果匯整成 HTML 或 Markdown 報表，集中呈現績效、指標與交易明細。
