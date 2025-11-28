@@ -22,7 +22,10 @@ from tqdm import tqdm
 warnings.filterwarnings('ignore')
 
 class BayesianStateClassifier:
-    """貝葉斯狀態分類器"""
+    """
+    貝葉斯狀態分類器。
+    使用樸素貝葉斯 (Naive Bayes) 根據離散化特徵預測未來報酬率的分類。
+    """
     
     def __init__(self, lookback_days: int = 5):
         self.lookback_days = lookback_days
@@ -40,7 +43,7 @@ class BayesianStateClassifier:
         self.inverse_labels = {0: 'buy', 1: 'hold', 2: 'sell'}
         
     def _setup_logger(self) -> logging.Logger:
-        """設置日誌"""
+        """設定日誌配置。"""
         logger = logging.getLogger('BayesianClassifier')
         logger.setLevel(logging.INFO)
         
@@ -69,7 +72,7 @@ class BayesianStateClassifier:
         return logger
     
     def _calculate_future_return(self, data: pd.DataFrame, current_idx: int) -> float:
-        """計算未來5天的報酬率"""
+        """計算用於標記的未來報酬率。"""
         if current_idx + self.lookback_days >= len(data):
             return None
         
@@ -79,7 +82,7 @@ class BayesianStateClassifier:
         return (future_price - current_price) / current_price
     
     def _classify_return(self, return_value: float) -> str:
-        """將報酬率分類為買入/賣出/持有"""
+        """將報酬率分類為買入/賣出/持有。"""
         if return_value > self.return_threshold_buy:
             return 'buy'
         elif return_value < self.return_threshold_sell:
@@ -88,7 +91,7 @@ class BayesianStateClassifier:
             return 'hold'
     
     def _encode_features(self, X: pd.DataFrame, fit: bool = False) -> np.ndarray:
-        """編碼分類特徵"""
+        """使用 LabelEncoder 對類別特徵進行編碼。"""
         X_encoded = X.copy()
         
         for col in X.columns:

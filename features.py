@@ -20,6 +20,16 @@ class FeatureEngineeringConfig:
 
 
 def calculate_rsi(data: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    計算相對強弱指標 (RSI)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'Close' 欄位的 DataFrame。
+        period (int): RSI 計算週期。
+        
+    Returns:
+        pd.Series: RSI 數值。
+    """
     delta = data["Close"].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
@@ -31,6 +41,17 @@ def calculate_rsi(data: pd.DataFrame, period: int = 14) -> pd.Series:
 def calculate_stochastic_oscillator(
     data: pd.DataFrame, k_period: int = 14, d_period: int = 3
 ) -> tuple[pd.Series, pd.Series]:
+    """
+    計算隨機指標 (%K 和 %D)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'High', 'Low', 'Close' 欄位的 DataFrame。
+        k_period (int): %K 的週期。
+        d_period (int): %D 的週期。
+        
+    Returns:
+        tuple[pd.Series, pd.Series]: (%K, %D) 序列。
+    """
     low_min = data["Low"].rolling(window=k_period).min()
     high_max = data["High"].rolling(window=k_period).max()
     k_percent = 100 * ((data["Close"] - low_min) / (high_max - low_min))
@@ -41,6 +62,18 @@ def calculate_stochastic_oscillator(
 def calculate_macd(
     data: pd.DataFrame, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    計算平滑異同移動平均線 (MACD)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'Close' 欄位的 DataFrame。
+        fast_period (int): 快速 EMA 週期。
+        slow_period (int): 慢速 EMA 週期。
+        signal_period (int): 訊號線 EMA 週期。
+        
+    Returns:
+        tuple[pd.Series, pd.Series, pd.Series]: (MACD 線, 訊號線, MACD 柱狀圖)。
+    """
     ema_fast = data["Close"].ewm(span=fast_period, adjust=False).mean()
     ema_slow = data["Close"].ewm(span=slow_period, adjust=False).mean()
     macd_line = ema_fast - ema_slow
@@ -50,6 +83,16 @@ def calculate_macd(
 
 
 def calculate_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    計算平均真實波幅 (ATR)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'High', 'Low', 'Close' 欄位的 DataFrame。
+        period (int): ATR 計算週期。
+        
+    Returns:
+        pd.Series: ATR 數值。
+    """
     high_low = data["High"] - data["Low"]
     high_close = np.abs(data["High"] - data["Close"].shift())
     low_close = np.abs(data["Low"] - data["Close"].shift())
@@ -59,6 +102,16 @@ def calculate_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 def calculate_williams_r(data: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    計算威廉指標 (Williams %R)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'High', 'Low', 'Close' 欄位的 DataFrame。
+        period (int): 威廉指標計算週期。
+        
+    Returns:
+        pd.Series: 威廉指標數值。
+    """
     highest_high = data["High"].rolling(window=period).max()
     lowest_low = data["Low"].rolling(window=period).min()
     williams_r = -100 * ((highest_high - data["Close"]) / (highest_high - lowest_low))
@@ -66,6 +119,16 @@ def calculate_williams_r(data: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 def calculate_cci(data: pd.DataFrame, period: int = 20) -> pd.Series:
+    """
+    計算順勢指標 (CCI)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'High', 'Low', 'Close' 欄位的 DataFrame。
+        period (int): CCI 計算週期。
+        
+    Returns:
+        pd.Series: CCI 數值。
+    """
     typical_price = (data["High"] + data["Low"] + data["Close"]) / 3
     sma_tp = typical_price.rolling(window=period).mean()
     mad_tp = typical_price.rolling(window=period).apply(
@@ -76,6 +139,15 @@ def calculate_cci(data: pd.DataFrame, period: int = 20) -> pd.Series:
 
 
 def calculate_obv(data: pd.DataFrame) -> pd.Series:
+    """
+    計算能量潮指標 (OBV)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'Close', 'Volume' 欄位的 DataFrame。
+        
+    Returns:
+        pd.Series: OBV 數值。
+    """
     obv = pd.Series(index=data.index, dtype=float)
     obv.iloc[0] = 0
 
@@ -91,6 +163,16 @@ def calculate_obv(data: pd.DataFrame) -> pd.Series:
 
 
 def calculate_adx(data: pd.DataFrame, period: int = 14) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    計算平均趨向指標 (ADX)。
+    
+    Args:
+        data (pd.DataFrame): 包含 'High', 'Low', 'Close' 欄位的 DataFrame。
+        period (int): ADX 計算週期。
+        
+    Returns:
+        tuple[pd.Series, pd.Series, pd.Series]: (ADX, DI+, DI-)。
+    """
     tr = pd.concat(
         [
             data["High"] - data["Low"],

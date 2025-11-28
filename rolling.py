@@ -57,17 +57,23 @@ FEATURES_TO_BIN = {
 @dataclass
 class RollingWindowConfig:
     input_path: Path = Path('data/feature.csv')
-    output_path: Path = Path('data/rolling_window_10weeks_4bins.csv')
-    window_weeks: int = 10  # 窗口大小（週數）
+    output_path: Path = Path('data/rolling_window_12weeks_4bins.csv')
+    window_weeks: int = 12  # 窗口大小（週數）
     num_bins: int = 4
 
 
 class RollingWindowBinner:
+    """
+    處理特徵的滾動窗口分箱。
+    """
     def __init__(self, features_to_bin: Dict[str, str] | None = None):
         self.features_to_bin = features_to_bin or FEATURES_TO_BIN
         self.basic_columns = BASIC_COLUMNS
 
     def prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        準備分箱用的數據：將日期轉換為 datetime 並排序。
+        """
         logger.info("準備數據...")
         df = data.copy()
         df['Date'] = pd.to_datetime(df['Date'])
@@ -76,6 +82,9 @@ class RollingWindowBinner:
         return df
 
     def create_bins_for_window(self, window_data: pd.DataFrame, num_bins: int) -> pd.DataFrame:
+        """
+        為特定窗口的數據建立分箱。
+        """
         df = window_data.copy()
         for feature, bin_column in self.features_to_bin.items():
             if feature in df.columns and len(df) >= num_bins:

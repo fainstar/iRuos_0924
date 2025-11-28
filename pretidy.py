@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PreTidyConfig:
-    input_path: Path = Path('data/rolling_window_10weeks_4bins.csv')
+    input_path: Path = Path('data/rolling_window_12weeks_4bins.csv')
     output_path: Path = Path('data/final_data.csv')
     base_columns: List[str] = field(default_factory=lambda: [
         'Date',
@@ -24,10 +24,16 @@ class PreTidyConfig:
 
 
 class PreTidyProcessor:
+    """
+    負責清理與選擇分箱後數據的處理器。
+    """
     def __init__(self, config: PreTidyConfig):
         self.config = config
 
     def select_columns(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        選擇基本欄位與分箱欄位。
+        """
         logger.debug("正在選擇欄位...")
         selected_columns = self.config.base_columns.copy()
         bin_columns = [col for col in data.columns if col.endswith(self.config.bin_suffix)]
@@ -37,6 +43,9 @@ class PreTidyProcessor:
         return data[selected_columns]
 
     def drop_missing(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        刪除含有缺失值的行。
+        """
         logger.debug("刪除缺失值行...")
         before_drop = len(data)
         cleaned = data.dropna()
@@ -44,6 +53,9 @@ class PreTidyProcessor:
         return cleaned
 
     def process(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        執行清理流程。
+        """
         logger.info("開始整理數據...")
         df = self.select_columns(data)
         df = self.drop_missing(df)

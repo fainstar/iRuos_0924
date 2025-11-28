@@ -1,9 +1,9 @@
 import json
-import subprocess
-import sys
+import os
 import schedule
 import time
-import os
+
+from pipeline import PipelineConfig, TradingPipeline
 
 
 # 這個檔案會從同目錄下的 `stock.json` 讀取要處理的股票(symbol)與對應的 webhook_url
@@ -16,7 +16,15 @@ import os
 
 
 def load_stock_entries(path="stock.json"):
-    """載入 stock.json，回傳一個 dict list。若檔案不存在或解析失敗，會回傳預設值清單。"""
+    """
+    從 stock.json 載入股票設定。
+    
+    Args:
+        path (str): JSON 檔案路徑。
+        
+    Returns:
+        list: 股票設定字典列表。
+    """
     default = [{
         "symbol": "ETH-USD",
         "webhook_url": "https://discord.com/api/webhooks/1426931603870978181/TQPCP9zPF8AbCEZokiZ-rrfpaeprmWWs6X0mvVtvuntCdIaFCmFpEgZ0vokelDjcEPfz"
@@ -67,36 +75,44 @@ def load_stock_entries(path="stock.json"):
 
 
 def run_pipeline_for(entry: dict):
-    """對單一 entry 執行整個 pipeline：fetch -> features -> ... -> send webhook。"""
+    """依照設定執行單一標的的完整流水線"""
     symbol = entry.get("symbol", "ETH-USD")
-    webhook = entry.get("webhook_url")
+    config = PipelineConfig(
+        symbol=symbol,
+        years=entry.get("years", 10),
+        window_weeks=entry.get("window_weeks", 12),
+        num_bins=entry.get("num_bins", 4),
+        lookback_days=entry.get("lookback_days", 5),
+        initial_train_cutoff=entry.get("initial_train_cutoff", "2019-12-31"),
+        initial_capital=entry.get("initial_capital", 1_000_000.0),
+        commission_rate=entry.get("commission_rate", 0.001425),
+        webhook_url=entry.get("webhook_url"),
+    )
+
     try:
-        subprocess.run([sys.executable, "fetch.py", "-t", symbol, "-y", "10"], check=True)
-        subprocess.run([sys.executable, "features.py"], check=True)
-        subprocess.run([sys.executable, "rolling.py"], check=True)
-        subprocess.run([sys.executable, "pretidy.py"], check=True)
-        subprocess.run([sys.executable, "bayesian_unified.py", "--window-weeks", "10", "--bins", "4"], check=True)
-        subprocess.run([sys.executable, "backtest_signal_based.py"], check=True)
-        if webhook:
-            subprocess.run([sys.executable, "send_discord_webhook.py", "-w", webhook], check=True)
-        else:
-            print(f"No webhook provided for {symbol}, skipping webhook step")
+        pipeline = TradingPipeline(config)
+        result = pipeline.run()
         print(f"Pipeline for {symbol} completed successfully!")
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while running the pipeline for {symbol}: {e}")
+        return result
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"An error occurred while running the pipeline for {symbol}: {exc}")
+        return None
 
 
 def run_all(entries):
+    """依序對所有設定執行流水線"""
+    results = []
     for entry in entries:
-        run_pipeline_for(entry)
+        results.append(run_pipeline_for(entry))
+    return results
 
 
 if __name__ == "__main__":
     entries = load_stock_entries("stock.json")
     run_all(entries)
     print("Initial run completed. Setting up scheduler...")
-    # 每天20點執行所有 entries
-    schedule.every().day.at("20:00").do(run_all, entries)
+    # 每天15點執行所有 entries
+    schedule.every().day.at("15:00").do(run_all, entries)
 
     print("Scheduler started. Waiting for the next run...")
     while True:

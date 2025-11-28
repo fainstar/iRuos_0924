@@ -15,18 +15,34 @@ from datetime import datetime
 
 
 def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
-    """Parse CLI arguments."""
-    parser = argparse.ArgumentParser(description="Send tomorrow trading signal to Discord webhook")
-    parser.add_argument("--webhook", "-w", required=True, help="Discord webhook URL (required)")
-    parser.add_argument("--json-path", "-j", help="Path to JSON file (overrides default log/tomorrow_trading_signal.json)")
-    parser.add_argument("--dry-run", action="store_true", help="Do not POST, just print payload")
-    parser.add_argument("--retries", type=int, default=1, help="Number of retries on failure (default: 1)")
-    parser.add_argument("--retry-delay", type=int, default=10, help="Seconds to wait between retries (default: 10)")
+    """
+    解析命令列參數。
+    
+    Args:
+        argv (list, optional): 參數列表。預設為 None (使用 sys.argv)。
+        
+    Returns:
+        argparse.Namespace: 解析後的參數物件。
+    """
+    parser = argparse.ArgumentParser(description="發送明日交易訊號至 Discord Webhook")
+    parser.add_argument("--webhook", "-w", required=True, help="Discord webhook URL (必填)")
+    parser.add_argument("--json-path", "-j", help="JSON 檔案路徑 (覆蓋預設值 log/tomorrow_trading_signal.json)")
+    parser.add_argument("--dry-run", action="store_true", help="不發送 POST 請求，僅印出 Payload")
+    parser.add_argument("--retries", type=int, default=1, help="失敗重試次數 (預設: 1)")
+    parser.add_argument("--retry-delay", type=int, default=10, help="重試間隔秒數 (預設: 10)")
     return parser.parse_args(argv)
 
 
 def load_json(path: str) -> Dict[str, Any]:
-    """Load JSON from path, exit with error code on failure."""
+    """
+    從路徑載入 JSON，若失敗則以錯誤代碼退出。
+    
+    Args:
+        path (str): JSON 檔案路徑。
+        
+    Returns:
+        Dict[str, Any]: 載入的 JSON 數據。
+    """
     if not os.path.isfile(path):
         print(f"找不到 JSON 檔案: {path}\n請確認檔案存在或傳入正確路徑（可用 --json-path 參數）", file=sys.stderr)
         sys.exit(2)
@@ -40,7 +56,16 @@ def load_json(path: str) -> Dict[str, Any]:
 
 
 def prob_bar(pct: float, width: int = 20) -> str:
-    """Return a simple text progress bar and percentage for pct in [0,1]."""
+    """
+    回傳一個簡單的文字進度條與百分比，pct 範圍為 [0,1]。
+    
+    Args:
+        pct (float): 百分比數值 (0.0 到 1.0)。
+        width (int): 進度條寬度 (字元數)。
+        
+    Returns:
+        str: 格式化後的進度條字串。
+    """
     try:
         p = float(pct)
     except Exception:
@@ -52,7 +77,15 @@ def prob_bar(pct: float, width: int = 20) -> str:
 
 
 def fmt_iso_to_readable(s: Optional[str]) -> str:
-    """Format an ISO-like string to YYYY-MM-DD (fallback to partial original)."""
+    """
+    將 ISO 格式字串轉換為 YYYY-MM-DD (若失敗則回傳部分原始字串)。
+    
+    Args:
+        s (str, optional): ISO 日期字串。
+        
+    Returns:
+        str: 格式化後的日期字串。
+    """
     if not s:
         return "N/A"
     try:
@@ -64,7 +97,15 @@ def fmt_iso_to_readable(s: Optional[str]) -> str:
 
 
 def build_embed(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Construct the Discord embed payload from data dict."""
+    """
+    從數據字典建構 Discord embed payload。
+    
+    Args:
+        data (Dict[str, Any]): 訊號數據。
+        
+    Returns:
+        Dict[str, Any]: Discord embed 物件。
+    """
     action = data.get("recommended_action", "").lower()
     color_map = {"buy": 0x00FF00, "hold": 0xFFFF00, "sell": 0xFF0000}
     color = color_map.get(action, 0xCCCCCC)

@@ -12,7 +12,7 @@ from typing import Callable, Iterable, List, Optional, Tuple
 import pandas as pd
 import requests
 import yfinance as yf
-
+import database  # Added database import
 
 if sys.platform == "win32":
     import io as _io  # type: ignore
@@ -336,29 +336,75 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
     ticker_symbol = ticker_symbol.upper()
     years = max(1, min(years, 20))
 
-    try:
-        print(f"正在抓取股票 {ticker_symbol} 的 {years} 年歷史資料...")
-    except Exception:
-        print(f"Fetching {ticker_symbol} data for {years} years...")
+    # 1. Check DB for latest date
+    latest_date_str = database.get_latest_date(ticker_symbol)
+    new_data = None
 
-    session = get_yf_session()
-    warm_up_session(session, ticker_symbol)
-
-    attempts, initialization_error = build_fetch_attempts(ticker_symbol, years, session)
-    data, error_message = run_fetch_attempts(ticker_symbol, attempts, initialization_error)
-
-    if data is not None:
+    if latest_date_str:
+        print(f"Found existing data for {ticker_symbol} up to {latest_date_str}")
         try:
-            print(f"成功抓取 {len(data)} 條數據 (從 {data['Date'].min()} 到 {data['Date'].max()})")
-        except Exception:
-            print(f"Successfully fetched {len(data)} records")
-        return data
+            latest_date = datetime.strptime(latest_date_str, "%Y-%m-%d")
+            start_date = latest_date + timedelta(days=1)
+            
+            if start_date > datetime.now():
+                print("Data is up to date.")
+            else:
+                print(f"Fetching new data from {start_date.strftime('%Y-%m-%d')}...")
+                session = get_yf_session()
+                # Use yf.download for incremental update
+                new_data = yf.download(
+                    tickers=ticker_symbol,
+                    start=start_date.strftime('%Y-%m-%d'),
+                    interval="1d",
+                    auto_adjust=False,
+                    actions=True,
+                    progress=False,
+                    threads=False,
+                    session=session,
+                )
+                
+                if new_data is not None and not new_data.empty:
+                    try:
+                        new_data = _normalize_history_df(new_data, ticker_symbol)
+                    except Exception as e:
+                        print(f"Error normalizing incremental data: {e}")
+                        new_data = None
+        except Exception as e:
+            print(f"Error checking/fetching incremental data: {e}")
+            # Fallback to full fetch if incremental fails
+            latest_date_str = None 
 
-    reason = error_message or "未知原因"
-    try:
-        print(f"抓取股票 {ticker_symbol} 資料時發生錯誤: {reason}")
-    except Exception:
-        print(f"Error fetching {ticker_symbol}: {reason}")
+    if latest_date_str is None:
+        # Full fetch
+        try:
+            print(f"Fetching {ticker_symbol} data for {years} years...")
+        except Exception:
+            print(f"Fetching {ticker_symbol} data for {years} years...")
+
+        session = get_yf_session()
+        warm_up_session(session, ticker_symbol)
+
+        attempts, initialization_error = build_fetch_attempts(ticker_symbol, years, session)
+        new_data, error_message = run_fetch_attempts(ticker_symbol, attempts, initialization_error)
+        
+        if new_data is None:
+            reason = error_message or "未知原因"
+            print(f"Error fetching {ticker_symbol}: {reason}")
+
+    # 2. Save new data to DB
+    if new_data is not None and not new_data.empty:
+        database.save_market_data(ticker_symbol, new_data)
+
+    # 3. Load full data from DB
+    full_data = database.load_market_data(ticker_symbol)
+
+    if not full_data.empty:
+        try:
+            print(f"成功抓取 {len(full_data)} 條數據 (從 {full_data['Date'].min()} 到 {full_data['Date'].max()})")
+        except Exception:
+            print(f"Successfully fetched {len(full_data)} records")
+        return full_data
+
     return None
 
 

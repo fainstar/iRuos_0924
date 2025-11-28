@@ -38,6 +38,9 @@
     {
         "symbol": "SPY",
         "webhook_url": "https://discord.com/api/webhooks/1428287390824267856/nkq9eV0trNy2fnjyqlnc1wSnw6yMst23NkzaO62VyxRMNUJW8Awl5sV2p59qJqxfgnpO"
+    },
+    {
+        "symbol": "AMD",
+        "webhook_url": "https://discord.com/api/webhooks/1436702531546775603/pFq86NOUg-AxUH1vyBM9G1GFjhzRfQj8TiCK9SM3UJ7JqZIhE-kB_c_q8T1zVLYxD6PI"
     }
-
 ]

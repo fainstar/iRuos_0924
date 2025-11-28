@@ -9,6 +9,7 @@
 - 使用下一筆的開盤價進行操作
 """
 
+import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,14 +23,25 @@ plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.family'] = ['Hiragino Sans GB', 'Heiti TC', 'Arial Unicode MS']
 
 class SignalBasedBacktest:
-    def __init__(self, csv_file, initial_capital=1000000, commission_rate=0.001425):
+    """
+    基於交易訊號的回測系統。
+    根據 'buy'/'sell' 訊號與機率閾值執行交易。
+    """
+    def __init__(
+        self,
+        csv_file: str,
+        initial_capital: float = 1000000,
+        commission_rate: float = 0.001425,
+        symbol: str | None = None,
+    ):
         """
-        初始化回測系統
+        初始化回測系統。
         
-        Parameters:
-        csv_file: CSV檔案路徑
-        initial_capital: 初始資金
-        commission_rate: 手續費率
+        Args:
+            csv_file (str): 包含訊號的 CSV 檔案路徑。
+            initial_capital (float): 回測初始資金。
+            commission_rate (float): 每筆交易的手續費率。
+            symbol (str | None): 股票代號或標的名稱。
         """
         self.csv_file = csv_file
         self.initial_capital = initial_capital
@@ -37,9 +49,31 @@ class SignalBasedBacktest:
         self.data = None
         self.results = []
         self.trades = []
+        self.symbol = symbol
+
+    def _derive_symbol_from_data(self) -> str:
+        """
+        從資料或檔名推導股票代號。
+        """
+        if self.data is not None:
+            candidate_columns = ['symbol', 'Symbol', 'ticker', 'Ticker', '股票代號', '標的', '代號']
+            for col in candidate_columns:
+                if col in self.data.columns:
+                    value = str(self.data[col].iloc[0]).strip()
+                    if value:
+                        return value
+
+        base_name = os.path.basename(self.csv_file)
+        fallback = os.path.splitext(base_name)[0]
+        return fallback if fallback else "未知標的"
         
-    def load_data(self):
-        """載入CSV數據"""
+    def load_data(self) -> bool:
+        """
+        從 CSV 檔案載入數據。
+        
+        Returns:
+            bool: 若成功載入回傳 True，否則回傳 False。
+        """
         try:
             self.data = pd.read_csv(self.csv_file)
             self.data['日期'] = pd.to_datetime(self.data['日期'])
@@ -52,14 +86,20 @@ class SignalBasedBacktest:
             
             print(f"成功載入數據，共 {len(self.data)} 筆記錄")
             print(f"數據期間：{self.data['日期'].min()} 到 {self.data['日期'].max()}")
+
+            if not self.symbol:
+                self.symbol = self._derive_symbol_from_data()
+                print(f"使用標的：{self.symbol}")
             
         except Exception as e:
             print(f"載入數據失敗：{e}")
             return False
         return True
     
-    def run_backtest(self):
-        """執行回測"""
+    def run_backtest(self) -> None:
+        """
+        執行回測邏輯。
+        """
         if self.data is None:
             print("請先載入數據")
             return
@@ -260,12 +300,9 @@ class SignalBasedBacktest:
         if self.results is None or len(self.results) == 0:
             print("沒有回測結果可以繪製")
             return
-        
-        # # 設定圖表樣式
-        # plt.style.use('default')
-        # plt.rcParams['font.family'] = ['Microsoft JhengHei', 'DejaVu Sans']
-        # plt.rcParams['axes.unicode_minus'] = False
-        # plt.rcParams['figure.facecolor'] = 'white'
+
+        symbol_display = self.symbol or "未命名標的"
+        symbol_title = symbol_display.upper() if symbol_display else "未命名標的"
         
         # 獲取所有年份
         self.results['年份'] = self.results['日期'].dt.year
@@ -286,7 +323,7 @@ class SignalBasedBacktest:
             axes = axes.flatten()
         
         # 主標題
-        fig.suptitle('📈 年度股價走勢與交易策略分析', fontsize=20, fontweight='bold', y=0.98)
+        fig.suptitle(f'📈 {symbol_title} 年度股價走勢與交易策略分析', fontsize=20, fontweight='bold', y=0.98)
         
         # 轉換交易記錄為DataFrame便於處理
         trades_df = pd.DataFrame(self.trades) if len(self.trades) > 0 else pd.DataFrame()
@@ -304,7 +341,7 @@ class SignalBasedBacktest:
             if len(year_data) == 0:
                 ax.text(0.5, 0.5, f'{year}年\n無數據', ha='center', va='center', 
                        transform=ax.transAxes, fontsize=14)
-                ax.set_title(f'{year}年', fontsize=14, fontweight='bold')
+                ax.set_title(f'{symbol_title} {year}年', fontsize=14, fontweight='bold')
                 continue
             
             # 創建雙軸 - 左軸股價，右軸累積收益率
@@ -384,8 +421,12 @@ class SignalBasedBacktest:
             ax2.tick_params(axis='y', labelcolor='#ff7f0e')
             
             # 設定子圖標題和格式
-            ax.set_title(f'{year}年 (年度報酬: {year_return:+.1f}%, 最大回撤: -{max_drawdown:.1f}%)', 
-                        fontsize=12, fontweight='bold', pad=15)
+            ax.set_title(
+                f'{symbol_title} {year}年 (年度報酬: {year_return:+.1f}%, 最大回撤: -{max_drawdown:.1f}%)', 
+                fontsize=12,
+                fontweight='bold',
+                pad=15,
+            )
             
             # 合併圖例
             lines1, labels1 = ax.get_legend_handles_labels()
@@ -414,7 +455,8 @@ class SignalBasedBacktest:
         
         # 保存圖表
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"log/yearly_price_strategy_{timestamp}.png"
+        safe_symbol = symbol_title.replace('/', '_').replace(' ', '_')
+        filename = f"log/{safe_symbol}_yearly_price_strategy_{timestamp}.png"
         plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
         print(f"📊 年度分析圖表已保存至：{filename}")
         
@@ -473,19 +515,45 @@ class SignalBasedBacktest:
             print(trades_df.tail(10).to_string(index=False))
 
 
+def parse_args() -> argparse.Namespace:
+    """
+    解析命令列參數。
+    """
+    parser = argparse.ArgumentParser(description="基於交易訊號的回測系統")
+    parser.add_argument(
+        "--csv",
+        default="log/rolling_validation_daily_details.csv",
+        help="輸入的交易訊號 CSV 檔案",
+    )
+    parser.add_argument("--symbol", default=None, help="股票代號或標的名稱")
+    parser.add_argument(
+        "--initial-capital",
+        type=float,
+        default=1000000,
+        help="初始資金 (預設: 1000000)",
+    )
+    parser.add_argument(
+        "--commission-rate",
+        type=float,
+        default=0.001425,
+        help="手續費率 (預設: 0.001425)",
+    )
+    return parser.parse_args()
+
+
 def main():
     """主函數"""
-    # CSV檔案路徑
-    csv_file = "log/rolling_validation_daily_details.csv"
+    args = parse_args()
     
     # 確保log目錄存在
     os.makedirs("log", exist_ok=True)
     
     # 創建回測實例
     backtest = SignalBasedBacktest(
-        csv_file=csv_file,
-        initial_capital=1000000,  # 100萬初始資金
-        commission_rate=0.001425  # 0.1425% 手續費
+        csv_file=args.csv,
+        initial_capital=args.initial_capital,
+        commission_rate=args.commission_rate,
+        symbol=args.symbol,
     )
     
     # 執行回測
