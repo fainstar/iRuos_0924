@@ -204,6 +204,7 @@ def calculate_adx(data: pd.DataFrame, period: int = 14) -> tuple[pd.Series, pd.S
 
 
 def add_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    """在原始行情資料上加入各式技術指標"""
     data = data.sort_values("Date").copy()
 
     data["RSI_3"] = calculate_rsi(data, period=3)
@@ -246,6 +247,7 @@ def add_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_dataset(path: Path) -> pd.DataFrame:
+    """從指定路徑載入 CSV 資料集"""
     if not path.exists():
         raise FileNotFoundError(f"找不到輸入檔案: {path}")
     logger.info("讀取原始資料: %s", path)
@@ -253,12 +255,14 @@ def load_dataset(path: Path) -> pd.DataFrame:
 
 
 def save_dataset(data: pd.DataFrame, path: Path) -> None:
+    """將處理後的特徵資料輸出為 CSV"""
     path.parent.mkdir(parents=True, exist_ok=True)
     data.to_csv(path, index=False)
     logger.info("已將特徵資料輸出至: %s", path)
 
 
 def run_feature_engineering(config: FeatureEngineeringConfig) -> pd.DataFrame:
+    """依照設定執行完整的特徵工程流程"""
     dataset = load_dataset(config.input_path)
     enriched = add_technical_indicators(dataset)
     save_dataset(enriched, config.output_path)
@@ -266,6 +270,7 @@ def run_feature_engineering(config: FeatureEngineeringConfig) -> pd.DataFrame:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """建立特徵工程腳本的命令列解析器"""
     parser = argparse.ArgumentParser(description="對原始股價資料產生技術指標特徵")
     parser.add_argument(
         "--input",
@@ -289,6 +294,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    """命令列入口點"""
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 

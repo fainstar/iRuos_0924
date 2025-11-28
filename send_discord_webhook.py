@@ -1,7 +1,4 @@
-"""Send trading signal (tomorrow_trading_signal.json) to a Discord webhook.
-
-This script is refactored into functions for readability and testing.
-"""
+"""將明日交易訊號 (tomorrow_trading_signal.json) 推送到 Discord webhook 的工具。"""
 
 from typing import Any, Dict, Optional
 
@@ -145,12 +142,7 @@ def build_embed(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def post_webhook(webhook_url: str, payload: Dict[str, Any], dry_run: bool = False, retries: int = 1, retry_delay: int = 10) -> int:
-    """POST payload to webhook_url with retries.
-
-    retries: number of retry attempts after the initial try (e.g. 1 means try once, then retry once)
-    retry_delay: seconds to wait between retries
-    Return HTTP status code (0 for dry-run), or -1 on exception.
-    """
+    """將 payload 以 POST 方式送至指定 webhook，並支援重試機制"""
     if dry_run:
         print("Dry-run mode: payload would be:")
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -181,6 +173,7 @@ def post_webhook(webhook_url: str, payload: Dict[str, Any], dry_run: bool = Fals
 
 
 def main(argv: Optional[list] = None) -> int:
+    """命令列入口點"""
     args = parse_args(argv)
 
     base_dir = os.path.dirname(os.path.abspath(__file__))

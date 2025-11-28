@@ -123,6 +123,7 @@ class RollingWindowBinner:
         return df
 
     def add_window_features(self, window_data: pd.DataFrame) -> pd.DataFrame:
+        """為當前窗口加入統計特徵"""
         df = window_data.copy()
         df['window_data_count'] = len(df)
         if 'Close' in df.columns:
@@ -135,6 +136,7 @@ class RollingWindowBinner:
     def create_rolling_windows(
         self, data: pd.DataFrame, window_weeks: int, num_bins: int
     ) -> List[pd.DataFrame]:
+        """依指定週數切出滾動窗口並執行分箱"""
         logger.info("創建 %d 週的滾動窗口...", window_weeks)
         rolling_windows: List[pd.DataFrame] = []
         
@@ -180,6 +182,7 @@ class RollingWindowBinner:
         return rolling_windows
 
     def process(self, data: pd.DataFrame, window_weeks: int = 10, num_bins: int = 4) -> pd.DataFrame:
+        """執行完整流程並回傳合併後的分箱資料"""
         logger.info("開始滾動窗口特徵分箱處理...")
         prepared_data = self.prepare_data(data)
         rolling_windows = self.create_rolling_windows(prepared_data, window_weeks, num_bins)
@@ -192,6 +195,7 @@ class RollingWindowBinner:
 
 
 def load_feature_table(path: Path) -> pd.DataFrame:
+    """讀取分箱前的特徵資料表"""
     if not path.exists():
         raise FileNotFoundError(f"找不到輸入檔案: {path}")
     logger.info("讀取滾動窗口來源資料: %s", path)
@@ -199,6 +203,7 @@ def load_feature_table(path: Path) -> pd.DataFrame:
 
 
 def save_results(data: pd.DataFrame, path: Path) -> Path:
+    """將分箱結果輸出到指定路徑"""
     path.parent.mkdir(parents=True, exist_ok=True)
     data.to_csv(path, index=False)
     logger.info("處理結果已輸出至: %s", path)
@@ -208,6 +213,7 @@ def save_results(data: pd.DataFrame, path: Path) -> Path:
 def summarize_bins(
     data: pd.DataFrame, features_to_bin: Dict[str, str] | None = None
 ) -> Dict[str, pd.Series]:
+    """統計各分箱欄位的分布"""
     features_to_bin = features_to_bin or FEATURES_TO_BIN
     summary: Dict[str, pd.Series] = {}
     for feature, bin_column in features_to_bin.items():
@@ -217,6 +223,7 @@ def summarize_bins(
 
 
 def run_rolling_window(config: RollingWindowConfig) -> pd.DataFrame:
+    """依設定執行滾動窗口分箱流程"""
     data = load_feature_table(config.input_path)
     processor = RollingWindowBinner()
     result = processor.process(data, window_weeks=config.window_weeks, num_bins=config.num_bins)
@@ -227,6 +234,7 @@ def run_rolling_window(config: RollingWindowConfig) -> pd.DataFrame:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """建立滾動分箱腳本的命令列解析器"""
     parser = argparse.ArgumentParser(description="將特徵資料進行滾動窗口分箱")
     parser.add_argument("--input", type=Path, default=RollingWindowConfig.input_path, help="來源特徵檔案")
     parser.add_argument("--output", type=Path, default=RollingWindowConfig.output_path, help="輸出結果檔案")
@@ -242,6 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    """命令列入口點"""
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 

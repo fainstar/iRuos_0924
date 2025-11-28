@@ -409,6 +409,7 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """建立命令列參數解析器"""
     parser = argparse.ArgumentParser(description="抓取股票歷史資料")
     parser.add_argument("-t", "--ticker", type=str, help="股票代號 (例如: AAPL, 2330.TW, ETH-USD)")
     parser.add_argument("-y", "--years", type=int, default=5, help="要抓取的年數 (預設: 5)")
@@ -424,6 +425,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def get_user_input() -> Tuple[str, int]:
+    """互動式取得使用者輸入的股票代號與年數"""
     print("=" * 50)
     print("📈 股票資料抓取工具")
     print("=" * 50)
@@ -449,6 +451,7 @@ def get_user_input() -> Tuple[str, int]:
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
+    """命令列入口點"""
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 

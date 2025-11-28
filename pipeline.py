@@ -75,6 +75,7 @@ class TradingPipeline:
         self.logger = self._build_logger()
 
     def _prepare_directories(self) -> None:
+        """建立流程所需的資料夾結構"""
         self.paths.raw.parent.mkdir(parents=True, exist_ok=True)
         self.paths.features.parent.mkdir(parents=True, exist_ok=True)
         self.paths.rolling.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +83,7 @@ class TradingPipeline:
         self.paths.log_dir.mkdir(parents=True, exist_ok=True)
 
     def _build_logger(self) -> logging.Logger:
+        """建立專屬於該標的的日誌記錄器"""
         logger = logging.getLogger(f"TradingPipeline[{self.config.symbol}]")
         logger.setLevel(logging.INFO)
         if not logger.handlers:
@@ -93,6 +95,7 @@ class TradingPipeline:
         return logger
 
     def _find_market_row(self, target_date: pd.Timestamp) -> Optional[pd.Series]:
+        """在原始行情資料中尋找最接近指定日期的列"""
         if self.raw_data is None or 'Date' not in self.raw_data.columns:
             return None
         market_df = self.raw_data.sort_values('Date').reset_index(drop=True)
@@ -105,6 +108,7 @@ class TradingPipeline:
         return None
 
     def fetch_data(self) -> pd.DataFrame:
+        """抓取指定標的的行情資料並儲存為 CSV"""
         self.logger.info("開始抓取 %s 歷史資料", self.config.symbol)
         data = fetch_stock_data(self.config.symbol, years=self.config.years)
         if data is None or data.empty:
@@ -117,6 +121,7 @@ class TradingPipeline:
         return self.raw_data
 
     def generate_features(self) -> pd.DataFrame:
+        """計算技術指標並輸出特徵表"""
         if self.raw_data is None:
             raise RuntimeError("尚未抓取資料，無法計算特徵")
         self.logger.info("計算技術指標特徵")
@@ -127,6 +132,7 @@ class TradingPipeline:
         return self.feature_data
 
     def build_rolling_windows(self) -> pd.DataFrame:
+        """依設定建立滾動窗口並完成分箱"""
         if self.feature_data is None:
             raise RuntimeError("尚未產生特徵，無法進行滾動窗口分箱")
         self.logger.info("開始 %d 週、%d 分箱的滾動窗口處理", self.config.window_weeks, self.config.num_bins)
@@ -144,6 +150,7 @@ class TradingPipeline:
         return self.rolling_data
 
     def pretidy_data(self) -> pd.DataFrame:
+        """整理分箱後資料，留下模型所需欄位"""
         if self.rolling_data is None:
             raise RuntimeError("尚未有滾動窗口輸出，無法整理資料")
         self.logger.info("整理分箱後資料")
@@ -156,6 +163,7 @@ class TradingPipeline:
         return self.final_data
 
     def run_model(self) -> Dict[str, Any]:
+        """執行滾動驗證並輸出模型與訊號"""
         if self.final_data is None or self.final_data.empty:
             raise RuntimeError("尚未完成資料整理，無法執行模型驗證")
         self.logger.info("啟動貝葉斯分類滾動驗證")
@@ -211,6 +219,7 @@ class TradingPipeline:
         return rolling_results
 
     def run_backtest(self) -> Dict[str, Any]:
+        """根據最新滾動驗證結果執行回測"""
         self.logger.info("開始回測交易策略")
         backtest = SignalBasedBacktest(
             csv_file=str(self.paths.rolling_daily),
@@ -228,6 +237,7 @@ class TradingPipeline:
         return stats
 
     def send_webhook(self) -> Optional[int]:
+        """若設定 Discord webhook，則送出明日訊號"""
         if not self.config.webhook_url:
             self.logger.info("未設定 webhook，略過通知步驟")
             return None
@@ -241,6 +251,7 @@ class TradingPipeline:
         return status
 
     def submit_backend_form(self) -> Optional[int]:
+        """將最新行情與模型預測回填到後端表單"""
         if not self.tomorrow_signal:
             self.logger.info("尚未產生交易訊號，略過後端表單填寫")
             return None
@@ -302,6 +313,7 @@ class TradingPipeline:
         return response.status_code
 
     def run(self) -> Dict[str, Any]:
+        """執行整體流程並回傳各階段輸出"""
         self.logger.info("=== 開始執行 %s 流水線 ===", self.config.symbol)
         self.fetch_data()
         self.generate_features()
