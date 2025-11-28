@@ -20,7 +20,7 @@ import os
 
 # 設定中文字體
 plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['font.family'] = ['Hiragino Sans GB', 'Heiti TC', 'Arial Unicode MS']
+plt.rcParams['font.family'] = ['Hiragino Sans GB', 'Heiti TC', 'Microsoft JhengHei', 'Arial Unicode MS']
 
 class SignalBasedBacktest:
     """
