@@ -10,13 +10,17 @@
 """
 
 import argparse
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
-from datetime import datetime
 import json
+import logging
 import os
+from datetime import datetime
+
+import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from logging_config import get_logger, setup_logging
 
 # 設定中文字體
 plt.rcParams['axes.unicode_minus'] = False
@@ -50,6 +54,8 @@ class SignalBasedBacktest:
         self.results = []
         self.trades = []
         self.symbol = symbol
+        display_name = symbol or os.path.splitext(os.path.basename(csv_file))[0] or "unknown"
+        self.logger = get_logger(f"SignalBacktest[{display_name}]")
 
     def _derive_symbol_from_data(self) -> str:
         """
@@ -84,15 +90,20 @@ class SignalBasedBacktest:
                 if col in self.data.columns:
                     self.data[col] = self.data[col].str.replace('%', '').astype(float) / 100
             
-            print(f"成功載入數據，共 {len(self.data)} 筆記錄")
-            print(f"數據期間：{self.data['日期'].min()} 到 {self.data['日期'].max()}")
+            self.logger.info("成功載入數據，共 %d 筆記錄", len(self.data))
+            self.logger.info(
+                "數據期間：%s 到 %s",
+                self.data['日期'].min(),
+                self.data['日期'].max(),
+            )
 
             if not self.symbol:
                 self.symbol = self._derive_symbol_from_data()
-                print(f"使用標的：{self.symbol}")
+                self.logger.info("使用標的：%s", self.symbol)
+                self.logger = get_logger(f"SignalBacktest[{self.symbol}]")
             
-        except Exception as e:
-            print(f"載入數據失敗：{e}")
+        except Exception:
+            self.logger.exception("載入數據失敗")
             return False
         return True
     
@@ -101,7 +112,7 @@ class SignalBasedBacktest:
         執行回測邏輯。
         """
         if self.data is None:
-            print("請先載入數據")
+            self.logger.error("尚未載入數據，無法進行回測")
             return
         
         # 初始化
@@ -136,7 +147,16 @@ class SignalBasedBacktest:
             
             # 除錯信息：記錄前幾筆數據的交易判斷
             if i < 20 or (trade_signal is not None):
-                print(f"日期: {date.strftime('%Y-%m-%d')}, 動作: {action}, 買入機率: {buy_prob:.1%}, 賣出機率: {sell_prob:.1%}, 交易信號: {trade_signal}, 現金: {cash:,.0f}, 持股: {position}")
+                self.logger.debug(
+                    "日期: %s, 動作: %s, 買入機率: %.1f%%, 賣出機率: %.1f%%, 交易信號: %s, 現金: %s, 持股: %s",
+                    date.strftime('%Y-%m-%d'),
+                    action,
+                    buy_prob * 100,
+                    sell_prob * 100,
+                    trade_signal,
+                    f"{cash:,.0f}",
+                    position,
+                )
             
             # 執行交易
             trade_executed = False
@@ -147,19 +167,34 @@ class SignalBasedBacktest:
                 # 買入：計算考慮手續費後可買的股數
                 # 總成本 = 股數 * 價格 * (1 + 手續費率)
                 max_shares = int(cash / (trade_price * (1 + self.commission_rate)))
-                print(f"嘗試買入：現金 {cash:,.0f}，價格 {trade_price:.2f}，可買股數 {max_shares}")
+                self.logger.debug(
+                    "嘗試買入：現金 %s，價格 %.2f，可買股數 %s",
+                    f"{cash:,.0f}",
+                    trade_price,
+                    max_shares,
+                )
                 
                 if max_shares > 0:
                     trade_amount = max_shares * trade_price
                     commission = trade_amount * self.commission_rate
                     total_cost = trade_amount + commission
-                    print(f"交易金額 {trade_amount:,.0f}，手續費 {commission:,.0f}，需要總金額 {total_cost:,.0f}")
+                    self.logger.debug(
+                        "交易金額 %s，手續費 %s，需要總金額 %s",
+                        f"{trade_amount:,.0f}",
+                        f"{commission:,.0f}",
+                        f"{total_cost:,.0f}",
+                    )
                     
                     if cash >= total_cost:
                         position += max_shares
                         cash -= total_cost
                         trade_executed = True
-                        print(f"執行買入：{max_shares} 股，價格 {trade_price:.2f}，金額 {trade_amount:,.0f}")
+                        self.logger.info(
+                            "執行買入：%s 股，價格 %.2f，金額 %s",
+                            max_shares,
+                            trade_price,
+                            f"{trade_amount:,.0f}",
+                        )
                         
                         # 記錄交易
                         trade_record = {
@@ -174,7 +209,11 @@ class SignalBasedBacktest:
                         }
                         self.trades.append(trade_record)
                     else:
-                        print(f"資金不足，無法買入（需要 {total_cost:,.0f}，僅有 {cash:,.0f}）")
+                        self.logger.warning(
+                            "資金不足，無法買入（需要 %s，僅有 %s）",
+                            f"{total_cost:,.0f}",
+                            f"{cash:,.0f}",
+                        )
             
             elif trade_signal == 'sell' and position > 0:
                 # 賣出：賣出所有持股
@@ -185,7 +224,12 @@ class SignalBasedBacktest:
                 shares_sold = position
                 position = 0
                 trade_executed = True
-                print(f"執行賣出：{shares_sold} 股，價格 {trade_price:.2f}，金額 {trade_amount:,.0f}")
+                self.logger.info(
+                    "執行賣出：%s 股，價格 %.2f，金額 %s",
+                    shares_sold,
+                    trade_price,
+                    f"{trade_amount:,.0f}",
+                )
                 
                 # 記錄交易
                 trade_record = {
@@ -223,10 +267,10 @@ class SignalBasedBacktest:
         # 轉換為DataFrame
         self.results = pd.DataFrame(daily_records)
         
-        print(f"回測完成！")
-        print(f"總交易次數：{len(self.trades)}")
-        print(f"最終總價值：{self.results['總價值'].iloc[-1]:,.0f}")
-        print(f"總報酬率：{self.results['報酬率'].iloc[-1]:.2%}")
+        self.logger.info("回測完成")
+        self.logger.info("總交易次數：%d", len(self.trades))
+        self.logger.info("最終總價值：%s", f"{self.results['總價值'].iloc[-1]:,.0f}")
+        self.logger.info("總報酬率：%.2f%%", self.results['報酬率'].iloc[-1] * 100)
     
     def calculate_statistics(self):
         """計算回測統計數據"""
@@ -298,7 +342,7 @@ class SignalBasedBacktest:
     def plot_results(self):
         """繪製簡潔的年度股價走勢與交易策略圖表"""
         if self.results is None or len(self.results) == 0:
-            print("沒有回測結果可以繪製")
+            self.logger.warning("沒有回測結果可以繪製")
             return
 
         symbol_display = self.symbol or "未命名標的"
@@ -458,7 +502,7 @@ class SignalBasedBacktest:
         safe_symbol = symbol_title.replace('/', '_').replace(' ', '_')
         filename = f"log/{safe_symbol}_yearly_price_strategy_{timestamp}.png"
         plt.savefig(filename, dpi=300, bbox_inches='tight', facecolor='white')
-        print(f"📊 年度分析圖表已保存至：{filename}")
+        self.logger.info("年度分析圖表已保存至：%s", filename)
         
         # plt.show()
     
@@ -481,11 +525,11 @@ class SignalBasedBacktest:
             trades_df = pd.DataFrame(self.trades)
             trades_df.to_csv(trades_file, index=False, encoding='utf-8-sig')
         
-        print(f"結果已保存：")
-        print(f"  統計數據：{stats_file}")
-        print(f"  每日數據：{daily_file}")
+        self.logger.info("回測結果已保存")
+        self.logger.info("統計數據：%s", stats_file)
+        self.logger.info("每日數據：%s", daily_file)
         if len(self.trades) > 0:
-            print(f"  交易記錄：{trades_file}")
+            self.logger.info("交易記錄：%s", trades_file)
         
         return stats
     
@@ -493,26 +537,26 @@ class SignalBasedBacktest:
         """印出回測摘要"""
         stats = self.calculate_statistics()
         
-        print("\n" + "="*60)
-        print("基於信號的回測結果摘要")
-        print("="*60)
-        print(f"初始資金：        ${stats['初始資金']:,.0f}")
-        print(f"最終價值：        ${stats['最終價值']:,.0f}")
-        print(f"總報酬率：        {stats['總報酬率']:.2%}")
-        print(f"年化報酬率：      {stats['年化報酬率']:.2%}")
-        print(f"年化波動率：      {stats['年化波動率']:.2%}")
-        print(f"最大回撤：        {stats['最大回撤']:.2%}")
-        print(f"夏普比率：        {stats['夏普比率']:.3f}")
-        print(f"交易次數：        {stats['交易次數']}")
-        print(f"勝率：            {stats['勝率']:.2%}")
-        print(f"回測天數：        {stats['回測天數']}")
-        print("="*60)
+        self.logger.info("=" * 60)
+        self.logger.info("基於信號的回測結果摘要")
+        self.logger.info("=" * 60)
+        self.logger.info("初始資金：        $%s", f"{stats['初始資金']:,.0f}")
+        self.logger.info("最終價值：        $%s", f"{stats['最終價值']:,.0f}")
+        self.logger.info("總報酬率：        %.2f%%", stats['總報酬率'] * 100)
+        self.logger.info("年化報酬率：      %.2f%%", stats['年化報酬率'] * 100)
+        self.logger.info("年化波動率：      %.2f%%", stats['年化波動率'] * 100)
+        self.logger.info("最大回撤：        %.2f%%", stats['最大回撤'] * 100)
+        self.logger.info("夏普比率：        %.3f", stats['夏普比率'])
+        self.logger.info("交易次數：        %d", stats['交易次數'])
+        self.logger.info("勝率：            %.2f%%", stats['勝率'] * 100)
+        self.logger.info("回測天數：        %d", stats['回測天數'])
+        self.logger.info("=" * 60)
         
         # 顯示最近幾筆交易
         if len(self.trades) > 0:
-            print("\n最近的交易記錄：")
+            self.logger.info("最近的交易記錄：")
             trades_df = pd.DataFrame(self.trades)
-            print(trades_df.tail(10).to_string(index=False))
+            self.logger.info("\n%s", trades_df.tail(10).to_string(index=False))
 
 
 def parse_args() -> argparse.Namespace:
@@ -543,6 +587,8 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     """主函數"""
+    setup_logging()
+    cli_logger = get_logger("SignalBacktestCLI")
     args = parse_args()
     
     # 確保log目錄存在
@@ -563,7 +609,7 @@ def main():
         backtest.save_results()
         backtest.plot_results()
     else:
-        print("回測失敗")
+        cli_logger.error("回測失敗")
 
 
 if __name__ == "__main__":

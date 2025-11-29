@@ -8,11 +8,6 @@ import os
 from datetime import datetime
 import logging
 
-# 設定日誌
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
 
 DB_PATH = 'data/market_data.db'

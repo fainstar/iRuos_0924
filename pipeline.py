@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -11,6 +10,7 @@ import requests
 
 from backtest_signal_based import SignalBasedBacktest
 from bayesian_unified import BayesianStateClassifier
+from logging_config import get_logger
 from fetch import fetch_stock_data
 from features import add_technical_indicators
 from pretidy import PreTidyConfig, PreTidyProcessor
@@ -76,7 +76,7 @@ class TradingPipeline:
         self.backend_status: Optional[int] = None
 
         self._prepare_directories()
-        self.logger = self._build_logger()
+        self.logger = get_logger(f"TradingPipeline[{self.config.symbol}]")
 
     def _prepare_directories(self) -> None:
         """建立流程所需的資料夾結構"""
@@ -85,18 +85,6 @@ class TradingPipeline:
         self.paths.rolling.parent.mkdir(parents=True, exist_ok=True)
         self.paths.final.parent.mkdir(parents=True, exist_ok=True)
         self.paths.log_dir.mkdir(parents=True, exist_ok=True)
-
-    def _build_logger(self) -> logging.Logger:
-        """建立專屬於該標的的日誌記錄器"""
-        logger = logging.getLogger(f"TradingPipeline[{self.config.symbol}]")
-        logger.setLevel(logging.INFO)
-        if not logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%H:%M:%S")
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-        logger.propagate = False
-        return logger
 
     def _find_market_row(self, target_date: pd.Timestamp) -> Optional[pd.Series]:
         """在原始行情資料中尋找最接近指定日期的列"""

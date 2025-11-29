@@ -8,6 +8,8 @@ from typing import Dict, Iterable, List
 import sys
 import pandas as pd
 
+from logging_config import setup_logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +256,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    logging.basicConfig(level=getattr(logging, args.log_level))
+    setup_logging(args.log_level)
 
     config = RollingWindowConfig(
         input_path=args.input,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ import requests
 import yfinance as yf
 import database  # Added database import
 
+from logging_config import setup_logging
+
 if sys.platform == "win32":
     import io as _io  # type: ignore
 
@@ -23,6 +26,9 @@ if sys.platform == "win32":
 
 _YF_SESSION: Optional[requests.Session] = None
 _YF_CRUMB: Optional[str] = None
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -342,15 +348,19 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
     has_new_rows = False
 
     if latest_date_str:
-        print(f"Found existing data for {ticker_symbol} up to {latest_date_str}")
+        logger.info("Found existing data for %s up to %s", ticker_symbol, latest_date_str)
         try:
             latest_date = datetime.strptime(latest_date_str, "%Y-%m-%d")
             start_date = latest_date + timedelta(days=1)
             
             if start_date > datetime.now():
-                print("Data is up to date.")
+                logger.info("Data for %s is already up to date", ticker_symbol)
             else:
-                print(f"Fetching new data from {start_date.strftime('%Y-%m-%d')}...")
+                logger.info(
+                    "Fetching incremental data for %s from %s",
+                    ticker_symbol,
+                    start_date.strftime('%Y-%m-%d'),
+                )
                 session = get_yf_session()
                 # Use yf.download for incremental update
                 new_data = yf.download(
@@ -369,19 +379,16 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
                         new_data = _normalize_history_df(new_data, ticker_symbol)
                         has_new_rows = True
                     except Exception as e:
-                        print(f"Error normalizing incremental data: {e}")
+                        logger.exception("Error normalizing incremental data for %s", ticker_symbol)
                         new_data = None
         except Exception as e:
-            print(f"Error checking/fetching incremental data: {e}")
+            logger.exception("Incremental fetch failed for %s", ticker_symbol)
             # Fallback to full fetch if incremental fails
             latest_date_str = None 
 
     if latest_date_str is None:
         # Full fetch
-        try:
-            print(f"Fetching {ticker_symbol} data for {years} years...")
-        except Exception:
-            print(f"Fetching {ticker_symbol} data for {years} years...")
+        logger.info("Fetching %s data for %s years", ticker_symbol, years)
 
         session = get_yf_session()
         warm_up_session(session, ticker_symbol)
@@ -391,7 +398,7 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
         
         if new_data is None:
             reason = error_message or "未知原因"
-            print(f"Error fetching {ticker_symbol}: {reason}")
+            logger.error("Error fetching %s: %s", ticker_symbol, reason)
         else:
             has_new_rows = True
 
@@ -408,9 +415,15 @@ def fetch_stock_data(ticker_symbol: str, years: int = 5) -> Optional[pd.DataFram
 
     if not full_data.empty:
         try:
-            print(f"成功抓取 {len(full_data)} 條數據 (從 {full_data['Date'].min()} 到 {full_data['Date'].max()})")
+            logger.info(
+                "Fetched %s records for %s (from %s to %s)",
+                len(full_data),
+                ticker_symbol,
+                full_data['Date'].min(),
+                full_data['Date'].max(),
+            )
         except Exception:
-            print(f"Successfully fetched {len(full_data)} records")
+            logger.info("Fetched %s records for %s", len(full_data), ticker_symbol)
         return full_data
 
     return None
@@ -434,15 +447,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def get_user_input() -> Tuple[str, int]:
     """互動式取得使用者輸入的股票代號與年數"""
-    print("=" * 50)
-    print("📈 股票資料抓取工具")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("📈 股票資料抓取工具")
+    logger.info("=" * 50)
 
     while True:
         ticker = input("請輸入股票代號 (例如: AAPL, 2330.TW, ETH-USD): ").strip().upper()
         if ticker:
             break
-        print("股票代號不能為空，請重新輸入")
+        logger.warning("股票代號不能為空，請重新輸入")
 
     while True:
         years_input = input("請輸入要抓取的年數 (預設5年，直接按Enter使用預設值): ").strip()
@@ -451,17 +464,19 @@ def get_user_input() -> Tuple[str, int]:
         try:
             years = int(years_input)
         except ValueError:
-            print("請輸入有效的數字")
+            logger.warning("請輸入有效的數字")
             continue
         if 0 < years <= 20:
             return ticker, years
-        print("年數必須在1-20之間")
+        logger.warning("年數必須在1-20之間")
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     """命令列入口點"""
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
+
+    setup_logging()
 
     if args.interactive or (not args.ticker):
         ticker, years = get_user_input()
@@ -477,11 +492,18 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     if data is not None:
         data.to_csv(filename, index=False)
-        print(f"✅ 股票 {ticker} 的 {years} 年原始資料已成功抓取，並保存到 {filename}")
-        print(f"📊 數據概覽: {len(data)} 條記錄，日期範圍: {data['Date'].min()} - {data['Date'].max()}")
+        logger.info(
+            "Saved %s years of raw data for %s to %s", years, ticker, filename
+        )
+        logger.info(
+            "Data summary: %s rows spanning %s to %s",
+            len(data),
+            data['Date'].min(),
+            data['Date'].max(),
+        )
         return 0
 
-    print(f"❌ 無法獲取股票 {ticker} 的資料，請檢查股票代號是否正確")
+    logger.error("Failed to fetch data for %s", ticker)
     return 1
 
 

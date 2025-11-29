@@ -2,13 +2,20 @@
 
 from typing import Any, Dict, Optional
 
-import os
+import argparse
 import json
+import logging
+import os
 import sys
 import time
-import requests
-import argparse
 from datetime import datetime
+
+import requests
+
+from logging_config import setup_logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
@@ -41,14 +48,14 @@ def load_json(path: str) -> Dict[str, Any]:
         Dict[str, Any]: 載入的 JSON 數據。
     """
     if not os.path.isfile(path):
-        print(f"找不到 JSON 檔案: {path}\n請確認檔案存在或傳入正確路徑（可用 --json-path 參數）", file=sys.stderr)
+        logger.error("JSON file not found: %s", path)
         sys.exit(2)
 
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        print(f"讀取 JSON 檔案失敗（格式錯誤）: {path} - {e}", file=sys.stderr)
+        logger.error("Failed to parse JSON file %s: %s", path, e)
         sys.exit(3)
 
 
@@ -144,8 +151,7 @@ def build_embed(data: Dict[str, Any]) -> Dict[str, Any]:
 def post_webhook(webhook_url: str, payload: Dict[str, Any], dry_run: bool = False, retries: int = 1, retry_delay: int = 10) -> int:
     """將 payload 以 POST 方式送至指定 webhook，並支援重試機制"""
     if dry_run:
-        print("Dry-run mode: payload would be:")
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        logger.info("Dry-run mode: payload would be:\n%s", json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
     attempts = 1 + max(0, int(retries))
@@ -154,19 +160,25 @@ def post_webhook(webhook_url: str, payload: Dict[str, Any], dry_run: bool = Fals
         try:
             resp = requests.post(webhook_url, json=payload)
         except Exception as e:
-            print(f"Error sending webhook on attempt {attempt}/{attempts}: {e}")
+            logger.exception("Error sending webhook on attempt %s/%s", attempt, attempts)
             last_status = -1
         else:
             last_status = resp.status_code
             if resp.status_code // 100 == 2:
-                print(f"已送出到 Discord webhook (attempt {attempt}/{attempts})")
+                logger.info("Webhook delivered successfully (attempt %s/%s)", attempt, attempts)
                 return resp.status_code
             else:
-                print(f"發生錯誤 on attempt {attempt}/{attempts}: HTTP {resp.status_code} 內容: {resp.text}")
+                logger.error(
+                    "Webhook attempt %s/%s failed: HTTP %s %s",
+                    attempt,
+                    attempts,
+                    resp.status_code,
+                    resp.text,
+                )
 
         # 如果還有剩餘嘗試次數，等待後重試
         if attempt < attempts:
-            print(f"等待 {retry_delay} 秒後重試...")
+            logger.warning("Retrying webhook in %s seconds", retry_delay)
             time.sleep(max(0, int(retry_delay)))
 
     return last_status
@@ -175,6 +187,8 @@ def post_webhook(webhook_url: str, payload: Dict[str, Any], dry_run: bool = Fals
 def main(argv: Optional[list] = None) -> int:
     """命令列入口點"""
     args = parse_args(argv)
+
+    setup_logging()
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     json_path = args.json_path or os.path.join(base_dir, "log", "tomorrow_trading_signal.json")

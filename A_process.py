@@ -3,7 +3,11 @@ import os
 import schedule
 import time
 
+from logging_config import get_logger, setup_logging
 from pipeline import PipelineConfig, TradingPipeline
+
+
+logger = get_logger(__name__)
 
 
 # 這個檔案會從同目錄下的 `stock.json` 讀取要處理的股票(symbol)與對應的 webhook_url
@@ -31,14 +35,14 @@ def load_stock_entries(path="stock.json"):
     }]
 
     if not os.path.exists(path):
-        print(f"{path} not found, using default entries: {default}")
+        logger.warning("%s not found, using default entries: %s", path, default)
         return default
 
     with open(path, "r", encoding="utf-8") as f:
         text = f.read().strip()
 
     if not text:
-        print(f"{path} is empty, using default entries")
+        logger.warning("%s is empty, using default entries", path)
         return default
 
     # 1) 嘗試整體解析（支援物件或陣列）
@@ -70,7 +74,7 @@ def load_stock_entries(path="stock.json"):
     if entries:
         return entries
 
-    print(f"Failed to parse {path}, using default entries")
+    logger.warning("Failed to parse %s, using default entries", path)
     return default
 
 
@@ -93,12 +97,12 @@ def run_pipeline_for(entry: dict):
         pipeline = TradingPipeline(config)
         result = pipeline.run()
         if isinstance(result, dict) and result.get("skipped"):
-            print(f"No new data for {symbol}. Pipeline skipped.")
+            logger.info("No new data for %s. Pipeline skipped.", symbol)
         else:
-            print(f"Pipeline for {symbol} completed successfully!")
+            logger.info("Pipeline for %s completed successfully", symbol)
         return result
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"An error occurred while running the pipeline for {symbol}: {exc}")
+        logger.exception("Error while running the pipeline for %s", symbol)
         return None
 
 
@@ -111,13 +115,14 @@ def run_all(entries):
 
 
 if __name__ == "__main__":
+    setup_logging()
     entries = load_stock_entries("stock.json")
     run_all(entries)
-    print("Initial run completed. Setting up scheduler...")
+    logger.info("Initial run completed. Setting up scheduler...")
     # 每天15點執行所有 entries
     schedule.every().day.at("15:00").do(run_all, entries)
 
-    print("Scheduler started. Waiting for the next run...")
+    logger.info("Scheduler started. Waiting for the next run...")
     while True:
         schedule.run_pending()
         time.sleep(30)

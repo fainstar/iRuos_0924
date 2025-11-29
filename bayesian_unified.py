@@ -19,6 +19,8 @@ from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
 
+from logging_config import get_logger, setup_logging
+
 warnings.filterwarnings('ignore')
 
 class BayesianStateClassifier:
@@ -49,32 +51,7 @@ class BayesianStateClassifier:
         
     def _setup_logger(self) -> logging.Logger:
         """設定日誌配置。"""
-        logger = logging.getLogger('BayesianClassifier')
-        logger.setLevel(logging.INFO)
-        
-        if not logger.handlers:
-            # 創建文件處理器，設置UTF-8編碼
-            handler = logging.FileHandler('log/bayesian_classifier.log', encoding='utf-8')
-            
-            # 設置更詳細的日誌格式
-            formatter = logging.Formatter(
-                '%(asctime)s | %(levelname)-5s | %(funcName)-25s | %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S'
-            )
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-            
-            # 控制台處理器只顯示重要信息
-            console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(
-                '%(asctime)s | %(levelname)-5s | %(message)s',
-                datefmt='%H:%M:%S'
-            )
-            console_handler.setFormatter(console_formatter)
-            console_handler.setLevel(logging.ERROR)  # 控制台只顯示錯誤
-            logger.addHandler(console_handler)
-            
-        return logger
+        return get_logger('BayesianClassifier')
     
     def _calculate_future_return(self, data: pd.DataFrame, current_idx: int) -> float:
         """計算用於標記的未來報酬率。"""
@@ -420,7 +397,7 @@ class BayesianStateClassifier:
         model_perf = self.train_until(initial_train_size)
         
         # 進行連續滾動驗證，每週三重新訓練
-        print(f"開始連續滾動驗證，共 {len(validation_data)} 天...")
+        self.logger.info("開始連續滾動驗證，共 %d 天", len(validation_data))
         validation_results = self._validate_with_frequent_retrain(
             validation_data, 
             initial_train_size, 
@@ -484,12 +461,9 @@ class BayesianStateClassifier:
             csv_filename = 'log/rolling_validation_daily_details.csv'
             daily_df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
             
-            self.logger.info(f"每日詳細狀態已保存到: {csv_filename}")
-            print(f"\n每日詳細狀態已保存到: {csv_filename}")
-            print(f"總共 {len(daily_df)} 天的詳細記錄")
-            
-            # 顯示一些統計資訊
-            print(f"週三重新訓練次數: {wednesday_count} 次")
+            self.logger.info("每日詳細狀態已保存到: %s", csv_filename)
+            self.logger.info("總共 %d 天的詳細記錄", len(daily_df))
+            self.logger.info("週三重新訓練次數: %d 次", wednesday_count)
         
         self.logger.info("🎉 連續滾動驗證完成")
         self.logger.info("=" * 60)
@@ -672,20 +646,23 @@ class BayesianStateClassifier:
 
 def run_rolling_validation():
     """執行滾動驗證的主函數"""
+    setup_logging()
+    cli_logger = get_logger("BayesianRollingValidationCLI")
+
     # 載入數據
-    print("載入數據...")
+    cli_logger.info("載入數據...")
     data = pd.read_csv('data/final_data.csv')
     data['Date'] = pd.to_datetime(data['Date'])
     data = data.sort_values('Date').reset_index(drop=True)
     
-    print(f"數據形狀: {data.shape}")
-    print(f"日期範圍: {data['Date'].min()} 到 {data['Date'].max()}")
+    cli_logger.info("數據形狀: %s", data.shape)
+    cli_logger.info("日期範圍: %s 到 %s", data['Date'].min(), data['Date'].max())
     
     # 創建分類器
     classifier = BayesianStateClassifier(lookback_days=5)
     
     # 執行滾動驗證
-    print("\n=== 執行連續預測驗證（週三重新訓練）===")
+    cli_logger.info("=== 執行連續預測驗證（週三重新訓練）===")
     
     # 配置滾動驗證參數
     # 設定初始訓練集到2019年12月31日
@@ -693,8 +670,8 @@ def run_rolling_validation():
     initial_train_size = len(data[data['Date'] <= cutoff_date])
     retrain_frequency = 'Wednesday'  # 每週三重新訓練
 
-    print(f"初始訓練集大小: {initial_train_size} 天")
-    print(f"重新訓練頻率: 每週三")
+    cli_logger.info("初始訓練集大小: %d 天", initial_train_size)
+    cli_logger.info("重新訓練頻率: 每週三")
     
     # 執行連續滾動驗證
     rolling_results = classifier.rolling_validation(
@@ -705,38 +682,42 @@ def run_rolling_validation():
     
     # 顯示預測驗證結果
     summary = rolling_results['summary']
-    print("\n=== 連續預測驗證結果摘要 ===")
-    print(f"預測準確率: {summary['prediction_accuracy']:.2%}")
-    print(f"平均信心度: {summary['avg_confidence']:.2%}")
-    print(f"總預測次數: {summary['total_predictions']}")
-    print(f"正確預測次數: {summary['correct_predictions']}")
-    print(f"重新訓練次數: {summary['retrain_count']}")
-    print(f"總驗證天數: {rolling_results['validation_config']['total_validation_days']}")
+    cli_logger.info("=== 連續預測驗證結果摘要 ===")
+    cli_logger.info("預測準確率: %.2f%%", summary['prediction_accuracy'] * 100)
+    cli_logger.info("平均信心度: %.2f%%", summary['avg_confidence'] * 100)
+    cli_logger.info("總預測次數: %d", summary['total_predictions'])
+    cli_logger.info("正確預測次數: %d", summary['correct_predictions'])
+    cli_logger.info("重新訓練次數: %d", summary['retrain_count'])
+    cli_logger.info("總驗證天數: %d", rolling_results['validation_config']['total_validation_days'])
     
     # 顯示各動作預測準確率
     action_acc = summary['action_accuracy']
-    print(f"\n各動作預測準確率:")
-    print(f"  買入 (buy): {action_acc.get('buy', 0):.2%}")
-    print(f"  持有 (hold): {action_acc.get('hold', 0):.2%}")
-    print(f"  賣出 (sell): {action_acc.get('sell', 0):.2%}")
+    cli_logger.info("各動作預測準確率:")
+    cli_logger.info("  買入 (buy): %.2f%%", action_acc.get('buy', 0) * 100)
+    cli_logger.info("  持有 (hold): %.2f%%", action_acc.get('hold', 0) * 100)
+    cli_logger.info("  賣出 (sell): %.2f%%", action_acc.get('sell', 0) * 100)
     
     # 保存滾動驗證結果
     with open('log/rolling_validation_results.json', 'w', encoding='utf-8') as f:
         json.dump(rolling_results, f, ensure_ascii=False, indent=2, default=str)
     
-    print(f"\n預測驗證結果已保存到: log/rolling_validation_results.json")
+    cli_logger.info("預測驗證結果已保存到: log/rolling_validation_results.json")
     
     # 顯示驗證結果詳細資訊
-    print(f"\n=== 驗證詳細結果 ===")
+    cli_logger.info("=== 驗證詳細結果 ===")
     result = rolling_results['detailed_results'][0]  # 只有一個結果
-    print(f"驗證期間: {result['validation_start'][:10]} - {result['validation_end'][:10]}")
-    print(f"預測準確率: {result['prediction_accuracy']:.2%}")
-    print(f"平均信心度: {result['avg_confidence']:.2%}")
-    print(f"總預測次數: {result['total_predictions']}")
-    print(f"重新訓練次數: {result['retrain_count']}")
+    cli_logger.info(
+        "驗證期間: %s - %s",
+        result['validation_start'][:10],
+        result['validation_end'][:10],
+    )
+    cli_logger.info("預測準確率: %.2f%%", result['prediction_accuracy'] * 100)
+    cli_logger.info("平均信心度: %.2f%%", result['avg_confidence'] * 100)
+    cli_logger.info("總預測次數: %d", result['total_predictions'])
+    cli_logger.info("重新訓練次數: %d", result['retrain_count'])
     
     # 用最新數據重新訓練最終模型
-    print(f"\n=== 訓練最終模型 ===")
+    cli_logger.info("=== 訓練最終模型 ===")
     final_train_size = int(len(data) * 0.8)
     evaluation_results = classifier.train_until(final_train_size)
     
@@ -744,27 +725,27 @@ def run_rolling_validation():
     classifier.save_model('log/bayesian_classifier_model.pkl')
     
     # 生成明天的交易訊號
-    print("\n=== 明天的交易訊號 ===")
+    cli_logger.info("=== 明天的交易訊號 ===")
     latest_data = data.iloc[-1]
     tomorrow_signal = classifier.get_next_day_signal(latest_data)
     
-    print(f"訊號產生日期: {latest_data['Date'].strftime('%Y-%m-%d')}")
-    print(f"執行交易日期: {(latest_data['Date'] + pd.Timedelta(days=1)).strftime('%Y-%m-%d')}")
-    print(f"當前收盤價: ${latest_data['Close']:.2f}")
+    cli_logger.info("訊號產生日期: %s", latest_data['Date'].strftime('%Y-%m-%d'))
+    cli_logger.info("執行交易日期: %s", (latest_data['Date'] + pd.Timedelta(days=1)).strftime('%Y-%m-%d'))
+    cli_logger.info("當前收盤價: $%.2f", latest_data['Close'])
     if 'Open' in data.columns:
-        print(f"當前開盤價: ${latest_data['Open']:.2f}")
-    print(f"明天建議動作: {tomorrow_signal['recommended_action']}")
-    print(f"信心度: {tomorrow_signal['confidence']:.2%}")
-    print(f"推理說明: {tomorrow_signal['reasoning']}")
-    print("動作概率:")
+        cli_logger.info("當前開盤價: $%.2f", latest_data['Open'])
+    cli_logger.info("明天建議動作: %s", tomorrow_signal['recommended_action'])
+    cli_logger.info("信心度: %.2f%%", tomorrow_signal['confidence'] * 100)
+    cli_logger.info("推理說明: %s", tomorrow_signal['reasoning'])
+    cli_logger.info("動作概率:")
     for action, prob in tomorrow_signal['action_probabilities'].items():
-        print(f"  {action}: {prob:.2%}")
+        cli_logger.info("  %s: %.2f%%", action, prob * 100)
     
     # 保存明天的訊號
     with open('log/tomorrow_trading_signal.json', 'w', encoding='utf-8') as f:
         json.dump(tomorrow_signal, f, ensure_ascii=False, indent=2)
     
-    print(f"\n明天的交易訊號已保存到: log/tomorrow_trading_signal.json")
+    cli_logger.info("明天的交易訊號已保存到: log/tomorrow_trading_signal.json")
 
 
 def main():
